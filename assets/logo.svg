@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#faf8f3"/>
+      <stop offset="1" stop-color="#efeadf"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1917"/>
+      <stop offset="1" stop-color="#0c0a09"/>
+    </linearGradient>
+    <linearGradient id="drop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1e6fa0"/>
+      <stop offset="1" stop-color="#0c4a6e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Squircle paper background -->
+  <rect width="1024" height="1024" rx="224" ry="224" fill="url(#paper)"/>
+
+  <!-- Faint ruling, like a notebook page -->
+  <line x1="232" y1="176" x2="792" y2="176" stroke="#e3ddd0" stroke-width="2"/>
+  <line x1="232" y1="852" x2="792" y2="852" stroke="#e3ddd0" stroke-width="2"/>
+
+  <!-- Serif capital I -->
+  <g fill="url(#ink)">
+    <rect x="292" y="320" width="440" height="48" rx="4"/>
+    <rect x="476" y="368" width="72" height="336"/>
+    <rect x="292" y="704" width="440" height="48" rx="4"/>
+  </g>
+
+  <!-- Ink droplet (the tittle, reimagined) -->
+  <path d="M 512 152
+           C 512 152 464 228 464 266
+           C 464 296 485 318 512 318
+           C 539 318 560 296 560 266
+           C 560 228 512 152 512 152 Z"
+        fill="url(#drop)"/>
+  <ellipse cx="498" cy="258" rx="9" ry="16" fill="#ffffff" opacity="0.45"/>
+</svg>

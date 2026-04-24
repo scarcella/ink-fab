@@ -1,0 +1,76 @@
+{
+  "name": "ink-fab",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local markdown editor with live preview",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build:renderer": "tsc --noEmit && vite build",
+    "build:icons": "node scripts/make-icon.mjs",
+    "dist": "npm run build:icons && npm run build:renderer && electron-builder",
+    "dist:dir": "npm run build:icons && npm run build:renderer && electron-builder --dir",
+    "install:local": "npm run dist:dir && (pkill -f '/Applications/InkFab.app/Contents/MacOS/InkFab' 2>/dev/null; true) && rm -rf '/Applications/InkFab.app' && cp -R 'release/mac-arm64/InkFab.app' /Applications/ && xattr -dr com.apple.quarantine '/Applications/InkFab.app' && open '/Applications/InkFab.app'",
+    "preview": "vite preview",
+    "test": "vite build && playwright test",
+    "test:ui": "vite build && playwright test --ui"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.5.0",
+    "@codemirror/lang-markdown": "^6.2.5",
+    "@codemirror/language": "^6.10.2",
+    "@codemirror/state": "^6.4.1",
+    "@codemirror/theme-one-dark": "^6.1.2",
+    "@codemirror/view": "^6.28.0",
+    "@lezer/highlight": "^1.2.0",
+    "highlight.js": "^11.10.0",
+    "katex": "^0.16.11",
+    "markdown-it": "^14.1.0",
+    "markdown-it-footnote": "^4.0.0",
+    "markdown-it-task-lists": "^2.1.1",
+    "mermaid": "^11.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^20.14.2",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "playwright": "^1.59.1",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.13",
+    "vite-plugin-electron": "^0.28.7",
+    "vite-plugin-electron-renderer": "^0.14.5"
+  },
+  "build": {
+    "appId": "com.inkfab.app",
+    "productName": "InkFab",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] }
+      ],
+      "icon": "build/icon.icns",
+      "identity": null
+    },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "icon": "build/icon.icns"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "build/icon.png"
+    ]
+  }
+}
