@@ -12,6 +12,7 @@ import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 import { GFM } from '@lezer/markdown';
 import { createLiveMarkdown } from './liveMarkdown';
+import { createPluginExtension, plugins } from './plugins';
 
 const MARKDOWN_FILE_RE = /\.(md|markdown|mdown|txt)$/i;
 
@@ -95,7 +96,10 @@ export default function Editor({ value, filePath, onChange, onOpenFile }: Props)
         ]),
         markdown({ base: markdownLanguage, addKeymap: true, extensions: [GFM] }),
         syntaxHighlighting(mdHighlight),
-        liveMarkdownCompartment.of(createLiveMarkdown(filePath)),
+        liveMarkdownCompartment.of([
+          createLiveMarkdown(filePath),
+          createPluginExtension(plugins, filePath),
+        ]),
         editorTheme,
         EditorView.lineWrapping,
         EditorView.updateListener.of((u) => {
@@ -120,7 +124,10 @@ export default function Editor({ value, filePath, onChange, onOpenFile }: Props)
     const liveMarkdownCompartment = liveMarkdownCompartmentRef.current;
     if (!view || !liveMarkdownCompartment) return;
     view.dispatch({
-      effects: liveMarkdownCompartment.reconfigure(createLiveMarkdown(filePath)),
+      effects: liveMarkdownCompartment.reconfigure([
+        createLiveMarkdown(filePath),
+        createPluginExtension(plugins, filePath),
+      ]),
     });
   }, [filePath]);
 

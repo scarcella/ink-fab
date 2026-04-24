@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Editor from './Editor';
 import logoUrl from '../assets/icon-source.png';
-import { hasOpenAICitations, stripOpenAICitations } from './openaiCitations';
+import {
+  applyOpenTransforms,
+  applySaveTransforms,
+  plugins,
+} from './plugins';
 
 const WELCOME = `# InkFab
 
@@ -82,13 +86,11 @@ export default function App() {
 
   const openDocument = useCallback(
     (nextFilePath: string, content: string) => {
-      const hadCitations = hasOpenAICitations(content);
-      const cleaned = hadCitations ? stripOpenAICitations(content) : content;
+      const cleaned = applyOpenTransforms(content, nextFilePath, plugins);
       sourceRef.current = cleaned;
       setSource(cleaned);
       syncFilePath(nextFilePath);
-      // Mark dirty if we cleaned anything — user's next save writes clean markdown.
-      syncDirty(hadCitations);
+      syncDirty(cleaned !== content);
     },
     [syncDirty, syncFilePath]
   );
@@ -104,7 +106,12 @@ export default function App() {
   const handleSave = useCallback(
     async (forceDialog = false) => {
       const target = forceDialog ? null : filePathRef.current;
-      const saved = await window.inkfab.saveFile(target, sourceRef.current);
+      const toWrite = applySaveTransforms(
+        sourceRef.current,
+        filePathRef.current ?? '',
+        plugins
+      );
+      const saved = await window.inkfab.saveFile(target, toWrite);
       if (!saved) return false;
       syncFilePath(saved);
       syncDirty(false);
