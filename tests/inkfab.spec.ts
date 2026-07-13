@@ -22,6 +22,9 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  if (page && !page.isClosed()) {
+    await page.evaluate(() => window.inkfab.setDirty(false));
+  }
   await app?.close();
 });
 
@@ -134,9 +137,18 @@ test('typing updates the document and marks dirty', async () => {
 });
 
 test('raw toggle switches view mode', async () => {
-  const rawBtn = page.locator('.mode-btn');
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.type('| A | B |\n| --- | --- |\n| one | two |\n\noutside');
+  await expect(page.locator('.cm-table-block table').first()).toBeVisible();
+
+  const rawBtn = page.locator('button[title^="Toggle raw source"]');
   await rawBtn.click();
   await expect(page.locator('.app.raw')).toBeVisible();
+  await expect(page.locator('.cm-table-block table')).toHaveCount(0);
+  await expect(page.locator('.cm-content')).toContainText('| A | B |');
+
   await rawBtn.click();
   await expect(page.locator('.app.raw')).toHaveCount(0);
+  await expect(page.locator('.cm-table-block table').first()).toBeVisible();
 });
