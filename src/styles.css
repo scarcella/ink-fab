@@ -97,7 +97,65 @@ html, body, #root {
   border-radius: 50%;
   background: var(--accent);
   opacity: 0.7;
+  flex-shrink: 0;
 }
+
+/* Tabs -------------------------------------------------------------------- */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-app-region: no-drag;
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 10px;
+  border-radius: 5px;
+  color: var(--fg-muted);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tab:hover { background: var(--bg-sunken); }
+.tab.active {
+  background: var(--bg-sunken);
+  color: var(--fg);
+}
+
+.tab-close {
+  border: none;
+  background: transparent;
+  color: var(--fg-faint);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1;
+  padding: 1px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.tab-close:hover { color: var(--fg); background: var(--border); }
+
+.tab-add {
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.tab-add:hover { background: var(--bg-sunken); color: var(--fg); }
 
 .titlebar-actions {
   display: flex;
