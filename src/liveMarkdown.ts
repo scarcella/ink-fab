@@ -35,6 +35,16 @@ type ResolvedTarget = {
   localPath?: string;
 };
 
+// Block widgets must not carry vertical margins — CodeMirror measures widget
+// height without them, which corrupts click/arrow-key position mapping. The
+// shell provides the spacing as padding; the inner card keeps border/background.
+function blockShell(child: HTMLElement): HTMLElement {
+  const shell = document.createElement('div');
+  shell.className = 'cm-block-shell';
+  shell.appendChild(child);
+  return shell;
+}
+
 class KaTeXWidget extends WidgetType {
   constructor(readonly source: string, readonly block: boolean) {
     super();
@@ -148,7 +158,7 @@ class TocWidget extends WidgetType {
       list.appendChild(li);
     });
     wrapper.appendChild(list);
-    return wrapper;
+    return blockShell(wrapper);
   }
   ignoreEvent() {
     return false;
@@ -183,7 +193,7 @@ class HighlightedCodeWidget extends WidgetType {
     }
     pre.appendChild(code);
     wrapper.appendChild(pre);
-    return wrapper;
+    return blockShell(wrapper);
   }
   ignoreEvent() {
     return false;
@@ -215,7 +225,7 @@ class MermaidWidget extends WidgetType {
         pre.textContent = `Mermaid error: ${err?.message ?? err}\n\n${this.source}`;
         wrapper.appendChild(pre);
       });
-    return wrapper;
+    return blockShell(wrapper);
   }
   ignoreEvent() {
     return false;

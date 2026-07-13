@@ -144,8 +144,12 @@ html, body, #root {
 .editor-host:hover::-webkit-scrollbar-thumb { background: var(--border); }
 
 /* Live-rendered markdown in the editor ----------------------------------- */
+/* CodeMirror's height map measures lines and block widgets without their
+   vertical margins, so any margin here skews posAtCoords (clicks land on the
+   wrong line) and vertical cursor motion. All vertical spacing inside the
+   editor must be padding, never margin. */
 .cm-editor .cm-line {
-  margin: 0.15em 0;
+  padding: 0.08em 0;
 }
 
 .cm-editor .cm-h {
@@ -153,8 +157,8 @@ html, body, #root {
   font-weight: 700;
   letter-spacing: -0.015em;
   color: var(--fg);
-  margin-top: 1.8em;
-  margin-bottom: 0.5em;
+  padding-top: 1.8em;
+  padding-bottom: 0.5em;
   line-height: 1.2;
 }
 .cm-editor .cm-h1 { font-size: 2em; }
@@ -238,8 +242,7 @@ html, body, #root {
 .cm-math-block {
   display: block;
   text-align: center;
-  margin: 1.2em 0;
-  padding: 0.5em 0;
+  padding: 1.7em 0;
   font-size: 1.05em;
 }
 
@@ -263,7 +266,8 @@ html, body, #root {
 }
 
 .cm-image-block {
-  margin: 1.4em 0;
+  margin: 0;
+  padding: 1.4em 0;
   text-align: center;
 }
 .cm-image-block img {
@@ -284,9 +288,8 @@ html, body, #root {
 
 /* Table widget (GFM tables) */
 .cm-table-block {
-  margin: 1.2em 0;
   overflow-x: auto;
-  padding: 0.2em 0;
+  padding: 1.4em 0;
 }
 .cm-table-block table {
   width: max-content;
@@ -340,9 +343,15 @@ html, body, #root {
   text-decoration-color: rgba(12, 74, 110, 0.55);
 }
 
+/* Bordered block widgets (toc, code, mermaid) keep their card styling on an
+   inner element; the shell supplies the vertical spacing as padding. */
+.cm-block-shell {
+  padding: 1.2em 0;
+}
+
 /* Table of contents */
 .cm-toc-block {
-  margin: 1.4em 0;
+  margin: 0;
   padding: 14px 18px 16px;
   background: var(--bg-sunken);
   border: 1px solid var(--border-soft);
@@ -380,7 +389,7 @@ html, body, #root {
 
 /* Highlighted fenced code block (widget) */
 .cm-code-block {
-  margin: 1em 0;
+  margin: 0;
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   background: var(--bg-sunken);
@@ -413,7 +422,7 @@ html, body, #root {
 
 /* Mermaid diagrams */
 .cm-mermaid-block {
-  margin: 1.4em auto;
+  margin: 0;
   padding: 1.2em;
   display: flex;
   justify-content: center;

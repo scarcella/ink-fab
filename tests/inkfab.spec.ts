@@ -136,6 +136,22 @@ test('typing updates the document and marks dirty', async () => {
   await expect(page.locator('.titlebar .dot')).toBeVisible();
 });
 
+test('click places the cursor on the clicked line', async () => {
+  // Headings carry large vertical spacing; if that spacing is implemented as
+  // margin, CodeMirror's height map ignores it and clicks map to a line below
+  // the one under the pointer.
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.type(
+    '# Section One\n\nalpha bravo charlie\ndelta echo foxtrot\ngolf hotel india\n\n## Section Two\n\nnovember oscar papa'
+  );
+
+  const target = page.locator('.cm-line', { hasText: 'delta echo foxtrot' });
+  await target.click();
+  await page.keyboard.type('ZULU');
+  await expect(target).toContainText('ZULU');
+});
+
 test('raw toggle switches view mode', async () => {
   await page.locator('.cm-content').click();
   await page.keyboard.press('Meta+A');
