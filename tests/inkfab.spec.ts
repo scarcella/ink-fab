@@ -184,6 +184,19 @@ test('arrow up crosses a heading line by line', async () => {
   await expect(page.locator('.cm-line', { hasText: 'one one' })).not.toContainText('TOP');
 });
 
+test('loading a document leaves the editor unfocused (no stray caret)', async () => {
+  await page.locator('.cm-content').click();
+  await expect(page.locator('.cm-editor.cm-focused')).toBeVisible();
+
+  // Trigger File > New through the menu IPC so DOM focus isn't disturbed by
+  // clicking a button; the unsaved-changes prompt auto-discards under test.
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('menu:new');
+  });
+
+  await expect(page.locator('.cm-editor.cm-focused')).toHaveCount(0);
+});
+
 test('raw toggle switches view mode', async () => {
   await page.locator('.cm-content').click();
   await page.keyboard.press('Meta+A');

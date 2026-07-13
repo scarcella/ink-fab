@@ -40,6 +40,8 @@ function isSafeExternalUrl(url: string): boolean {
 
 async function promptToSaveChanges(action: UnsavedAction, filePath: string | null) {
   if (!mainWindow) return 'cancel' as const;
+  // Native dialogs would hang the Playwright suite; tests always discard.
+  if (IS_TEST) return 'discard' as const;
 
   const fileName = filePath ? path.basename(filePath) : 'Untitled';
   const detailVerbs: Record<Exclude<UnsavedAction, 'close'>, string> = {
