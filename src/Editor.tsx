@@ -148,6 +148,9 @@ export default function Editor({ value, filePath, rawMode, onChange, onOpenFile 
         selection: { anchor: 0 },
       });
       isSyncingExternalValueRef.current = false;
+      // A freshly opened document should land without a caret (and without
+      // revealing the heading marks under it) until the user clicks or types.
+      if (view.hasFocus) view.contentDOM.blur();
     }
   }, [value]);
 
