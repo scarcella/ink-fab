@@ -22,7 +22,7 @@ let currentFilePath: string | null = null;
 let allowWindowClose = false;
 let isClosePromptOpen = false;
 
-type UnsavedAction = 'open' | 'navigate' | 'close';
+type UnsavedAction = 'open' | 'navigate' | 'close' | 'new';
 
 function isAppUrl(url: string): boolean {
   if (VITE_DEV_SERVER_URL) return url.startsWith(VITE_DEV_SERVER_URL);
@@ -42,12 +42,15 @@ async function promptToSaveChanges(action: UnsavedAction, filePath: string | nul
   if (!mainWindow) return 'cancel' as const;
 
   const fileName = filePath ? path.basename(filePath) : 'Untitled';
+  const detailVerbs: Record<Exclude<UnsavedAction, 'close'>, string> = {
+    open: 'open another file',
+    navigate: 'follow this link',
+    new: 'start a new document',
+  };
   const detail =
     action === 'close'
       ? `Save the changes you made to "${fileName}" before closing?`
-      : `Your changes to "${fileName}" will be lost if you ${
-          action === 'open' ? 'open another file' : 'follow this link'
-        }.`;
+      : `Your changes to "${fileName}" will be lost if you ${detailVerbs[action]}.`;
 
   const result = await dialog.showMessageBox(mainWindow, {
     type: 'warning',
@@ -203,6 +206,11 @@ function buildMenu() {
     {
       label: 'File',
       submenu: [
+        {
+          label: 'New',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => mainWindow?.webContents.send('menu:new'),
+        },
         {
           label: 'Open…',
           accelerator: 'CmdOrCtrl+O',

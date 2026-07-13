@@ -121,7 +121,7 @@ export default function App() {
   );
 
   const maybeSaveBeforeTransition = useCallback(
-    async (action: 'open' | 'navigate') => {
+    async (action: 'open' | 'navigate' | 'new') => {
       if (!dirtyRef.current) return true;
 
       const choice = await window.inkfab.confirmUnsavedChanges(action, filePathRef.current);
@@ -131,6 +131,14 @@ export default function App() {
     },
     [handleSave]
   );
+
+  const handleNew = useCallback(async () => {
+    if (!(await maybeSaveBeforeTransition('new'))) return;
+    sourceRef.current = '';
+    setSource('');
+    syncFilePath(null);
+    syncDirty(false);
+  }, [maybeSaveBeforeTransition, syncDirty, syncFilePath]);
 
   const handleOpen = useCallback(async () => {
     if (!(await maybeSaveBeforeTransition('open'))) return;
@@ -155,7 +163,8 @@ export default function App() {
 
   useEffect(() => {
     return window.inkfab.onMenu((action) => {
-      if (action === 'open') void handleOpen();
+      if (action === 'new') void handleNew();
+      else if (action === 'open') void handleOpen();
       else if (action === 'save') void handleSave(false);
       else if (action === 'save-as') void handleSave(true);
       else if (action === 'save-and-close') {
@@ -163,7 +172,7 @@ export default function App() {
       }
       else if (action === 'toggle-preview') setRawMode((v) => !v);
     });
-  }, [handleOpen, handleSave]);
+  }, [handleNew, handleOpen, handleSave]);
 
   const fileName = filePath ? filePath.split(/[\\/]/).pop() : 'Untitled';
 
@@ -180,6 +189,13 @@ export default function App() {
         </div>
         <div className="titlebar-actions">
           <button
+            className="mode-btn"
+            onClick={() => void handleNew()}
+            title="New document (⌘N)"
+          >
+            new
+          </button>
+          <button
             className={`mode-btn ${rawMode ? 'active' : ''}`}
             onClick={() => setRawMode((v) => !v)}
             title="Toggle raw source (⌘/)"
@@ -192,6 +208,7 @@ export default function App() {
         <Editor
           value={source}
           filePath={filePath}
+          rawMode={rawMode}
           onChange={onEditorChange}
           onOpenFile={handleOpenLinkedFile}
         />

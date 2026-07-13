@@ -7,7 +7,7 @@ declare global {
       readFile: (filePath: string) => Promise<string>;
       saveFile: (filePath: string | null, content: string) => Promise<string | null>;
       confirmUnsavedChanges: (
-        action: 'open' | 'navigate',
+        action: 'open' | 'navigate' | 'new',
         filePath: string | null
       ) => Promise<'save' | 'discard' | 'cancel'>;
       setDirty: (dirty: boolean) => void;
@@ -21,7 +21,13 @@ declare global {
       ) => { filePath: string; fileUrl: string } | null;
       onMenu: (
         handler: (
-          action: 'open' | 'save' | 'save-as' | 'toggle-preview' | 'save-and-close'
+          action:
+            | 'new'
+            | 'open'
+            | 'save'
+            | 'save-as'
+            | 'toggle-preview'
+            | 'save-and-close'
         ) => void
       ) => () => void;
     };

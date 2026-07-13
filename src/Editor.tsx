@@ -67,11 +67,21 @@ const editorTheme = EditorView.theme({
 type Props = {
   value: string;
   filePath: string | null;
+  rawMode: boolean;
   onChange: (v: string) => void;
   onOpenFile: (filePath: string) => void | Promise<void>;
 };
 
-export default function Editor({ value, filePath, onChange, onOpenFile }: Props) {
+function markdownPreviewExtensions(filePath: string | null, rawMode: boolean) {
+  return rawMode
+    ? []
+    : [
+        createLiveMarkdown(filePath),
+        createPluginExtension(plugins, filePath),
+      ];
+}
+
+export default function Editor({ value, filePath, rawMode, onChange, onOpenFile }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const liveMarkdownCompartmentRef = useRef<Compartment | null>(null);
@@ -96,10 +106,7 @@ export default function Editor({ value, filePath, onChange, onOpenFile }: Props)
         ]),
         markdown({ base: markdownLanguage, addKeymap: true, extensions: [GFM] }),
         syntaxHighlighting(mdHighlight),
-        liveMarkdownCompartment.of([
-          createLiveMarkdown(filePath),
-          createPluginExtension(plugins, filePath),
-        ]),
+        liveMarkdownCompartment.of(markdownPreviewExtensions(filePath, rawMode)),
         editorTheme,
         EditorView.lineWrapping,
         EditorView.updateListener.of((u) => {
@@ -124,12 +131,11 @@ export default function Editor({ value, filePath, onChange, onOpenFile }: Props)
     const liveMarkdownCompartment = liveMarkdownCompartmentRef.current;
     if (!view || !liveMarkdownCompartment) return;
     view.dispatch({
-      effects: liveMarkdownCompartment.reconfigure([
-        createLiveMarkdown(filePath),
-        createPluginExtension(plugins, filePath),
-      ]),
+      effects: liveMarkdownCompartment.reconfigure(
+        markdownPreviewExtensions(filePath, rawMode)
+      ),
     });
-  }, [filePath]);
+  }, [filePath, rawMode]);
 
   useEffect(() => {
     const view = viewRef.current;
