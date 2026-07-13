@@ -152,6 +152,38 @@ test('click places the cursor on the clicked line', async () => {
   await expect(target).toContainText('ZULU');
 });
 
+test('arrow keys move the cursor one line at a time', async () => {
+  // Vertical motion uses the same geometry as click mapping; with margin-based
+  // spacing it jumped whole regions instead of single lines.
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.type('# Title\n\none one\ntwo two\nthree three\nfour four');
+
+  await page.locator('.cm-line', { hasText: 'one one' }).click();
+  await page.keyboard.press('Meta+ArrowLeft');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.type('MID');
+  await expect(page.locator('.cm-line', { hasText: 'three three' })).toContainText('MID');
+});
+
+test('arrow up crosses a heading line by line', async () => {
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.type('# Title\n\none one\ntwo two');
+
+  await page.locator('.cm-line', { hasText: 'one one' }).click();
+  await page.keyboard.press('Meta+ArrowLeft');
+  await page.keyboard.press('ArrowUp'); // blank line
+  await page.keyboard.press('ArrowUp'); // heading line
+  await page.keyboard.type('TOP');
+  // The exact column depends on whether the hidden `# ` marks were revealed
+  // at the moment of the move; what matters is the marker landed on the
+  // heading line, one line per keypress.
+  await expect(page.locator('.cm-line', { hasText: 'Title' })).toContainText('TOP');
+  await expect(page.locator('.cm-line', { hasText: 'one one' })).not.toContainText('TOP');
+});
+
 test('raw toggle switches view mode', async () => {
   await page.locator('.cm-content').click();
   await page.keyboard.press('Meta+A');
