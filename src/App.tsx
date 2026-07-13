@@ -60,121 +60,172 @@ flowchart LR
 ⌘O to open a file. ⌘S to save. ⌘/ to peek at the raw source.
 `;
 
+type TabState = {
+  id: number;
+  filePath: string | null;
+  source: string;
+  dirty: boolean;
+};
+
+let nextTabId = 1;
+const makeTab = (partial: Partial<TabState> = {}): TabState => ({
+  id: nextTabId++,
+  filePath: null,
+  source: '',
+  dirty: false,
+  ...partial,
+});
+
+const initialTab = makeTab({ source: WELCOME });
+
+const tabName = (tab: TabState) =>
+  tab.filePath ? tab.filePath.split(/[\\/]/).pop() : 'Untitled';
+
 export default function App() {
-  const [source, setSource] = useState(WELCOME);
-  const [filePath, setFilePath] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
+  const [tabs, setTabs] = useState<TabState[]>([initialTab]);
+  const [activeId, setActiveId] = useState(initialTab.id);
   const [rawMode, setRawMode] = useState(false);
-  const sourceRef = useRef(source);
-  const filePathRef = useRef(filePath);
-  const dirtyRef = useRef(dirty);
-  sourceRef.current = source;
-  filePathRef.current = filePath;
-  dirtyRef.current = dirty;
 
-  const syncDirty = useCallback((nextDirty: boolean) => {
-    dirtyRef.current = nextDirty;
-    setDirty(nextDirty);
-    window.inkfab.setDirty(nextDirty);
+  const tabsRef = useRef(tabs);
+  const activeIdRef = useRef(activeId);
+  tabsRef.current = tabs;
+  activeIdRef.current = activeId;
+
+  const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
+
+  // Ref is updated eagerly so sequential async flows (save-all, close) see
+  // their own writes before React re-renders.
+  const setTabsNow = useCallback((next: TabState[]) => {
+    tabsRef.current = next;
+    setTabs(next);
   }, []);
 
-  const syncFilePath = useCallback((nextFilePath: string | null) => {
-    filePathRef.current = nextFilePath;
-    setFilePath(nextFilePath);
-    window.inkfab.setCurrentFile(nextFilePath);
-  }, []);
-
-  const openDocument = useCallback(
-    (nextFilePath: string, content: string) => {
-      const cleaned = applyOpenTransforms(content, nextFilePath, plugins);
-      sourceRef.current = cleaned;
-      setSource(cleaned);
-      syncFilePath(nextFilePath);
-      syncDirty(cleaned !== content);
+  const updateTab = useCallback(
+    (id: number, patch: Partial<TabState>) => {
+      setTabsNow(
+        tabsRef.current.map((t) => (t.id === id ? { ...t, ...patch } : t))
+      );
     },
-    [syncDirty, syncFilePath]
+    [setTabsNow]
   );
 
-  const onEditorChange = useCallback((v: string) => {
-    sourceRef.current = v;
-    setSource(v);
-    if (!dirtyRef.current) {
-      syncDirty(true);
-    }
-  }, [syncDirty]);
+  useEffect(() => {
+    window.inkfab.setDirty(tabs.some((t) => t.dirty));
+  }, [tabs]);
 
-  const handleSave = useCallback(
-    async (forceDialog = false) => {
-      const target = forceDialog ? null : filePathRef.current;
-      const toWrite = applySaveTransforms(
-        sourceRef.current,
-        filePathRef.current ?? '',
-        plugins
-      );
+  useEffect(() => {
+    window.inkfab.setCurrentFile(active.filePath);
+  }, [active.filePath]);
+
+  const onEditorChange = useCallback(
+    (v: string) => {
+      updateTab(activeIdRef.current, { source: v, dirty: true });
+    },
+    [updateTab]
+  );
+
+  const saveTab = useCallback(
+    async (id: number, forceDialog = false) => {
+      const tab = tabsRef.current.find((t) => t.id === id);
+      if (!tab) return false;
+      const target = forceDialog ? null : tab.filePath;
+      const toWrite = applySaveTransforms(tab.source, tab.filePath ?? '', plugins);
       const saved = await window.inkfab.saveFile(target, toWrite);
       if (!saved) return false;
-      syncFilePath(saved);
-      syncDirty(false);
+      updateTab(id, { filePath: saved, dirty: false });
       return true;
     },
-    [syncDirty, syncFilePath]
+    [updateTab]
   );
 
-  const maybeSaveBeforeTransition = useCallback(
-    async (action: 'open' | 'navigate' | 'new') => {
-      if (!dirtyRef.current) return true;
+  const handleSave = useCallback(
+    (forceDialog = false) => saveTab(activeIdRef.current, forceDialog),
+    [saveTab]
+  );
 
-      const choice = await window.inkfab.confirmUnsavedChanges(action, filePathRef.current);
-      if (choice === 'cancel') return false;
-      if (choice === 'save') return handleSave(false);
-      return true;
+  const handleNew = useCallback(() => {
+    const tab = makeTab();
+    setTabsNow([...tabsRef.current, tab]);
+    setActiveId(tab.id);
+  }, [setTabsNow]);
+
+  const openInTab = useCallback(
+    (filePath: string, content: string) => {
+      const existing = tabsRef.current.find((t) => t.filePath === filePath);
+      if (existing) {
+        setActiveId(existing.id);
+        return;
+      }
+      const cleaned = applyOpenTransforms(content, filePath, plugins);
+      const tab = makeTab({ filePath, source: cleaned, dirty: cleaned !== content });
+      setTabsNow([...tabsRef.current, tab]);
+      setActiveId(tab.id);
     },
-    [handleSave]
+    [setTabsNow]
   );
-
-  const handleNew = useCallback(async () => {
-    if (!(await maybeSaveBeforeTransition('new'))) return;
-    sourceRef.current = '';
-    setSource('');
-    syncFilePath(null);
-    syncDirty(false);
-  }, [maybeSaveBeforeTransition, syncDirty, syncFilePath]);
 
   const handleOpen = useCallback(async () => {
-    if (!(await maybeSaveBeforeTransition('open'))) return;
     const res = await window.inkfab.openFile();
     if (!res) return;
-    openDocument(res.filePath, res.content);
-  }, [maybeSaveBeforeTransition, openDocument]);
+    openInTab(res.filePath, res.content);
+  }, [openInTab]);
 
   const handleOpenLinkedFile = useCallback(
     async (nextFilePath: string) => {
-      if (!(await maybeSaveBeforeTransition('navigate'))) return;
+      const existing = tabsRef.current.find((t) => t.filePath === nextFilePath);
+      if (existing) {
+        setActiveId(existing.id);
+        return;
+      }
       const content = await window.inkfab.readFile(nextFilePath);
-      openDocument(nextFilePath, content);
+      openInTab(nextFilePath, content);
     },
-    [maybeSaveBeforeTransition, openDocument]
+    [openInTab]
   );
 
-  useEffect(() => {
-    window.inkfab.setDirty(false);
-    window.inkfab.setCurrentFile(null);
-  }, []);
+  const closeTab = useCallback(
+    async (id: number) => {
+      const tab = tabsRef.current.find((t) => t.id === id);
+      if (!tab) return;
+      if (tab.dirty) {
+        const choice = await window.inkfab.confirmUnsavedChanges('close-tab', tab.filePath);
+        if (choice === 'cancel') return;
+        if (choice === 'save' && !(await saveTab(id))) return;
+      }
+      const idx = tabsRef.current.findIndex((t) => t.id === id);
+      const remaining = tabsRef.current.filter((t) => t.id !== id);
+      const next = remaining.length ? remaining : [makeTab()];
+      setTabsNow(next);
+      if (activeIdRef.current === id) {
+        setActiveId(next[Math.min(Math.max(idx, 0), next.length - 1)].id);
+      }
+    },
+    [saveTab, setTabsNow]
+  );
+
+  const saveAllAndClose = useCallback(async () => {
+    let ok = true;
+    for (const tab of [...tabsRef.current]) {
+      if (!tab.dirty) continue;
+      if (!(await saveTab(tab.id))) {
+        ok = false;
+        break;
+      }
+    }
+    window.inkfab.completeCloseAfterSave(ok);
+  }, [saveTab]);
 
   useEffect(() => {
     return window.inkfab.onMenu((action) => {
-      if (action === 'new') void handleNew();
+      if (action === 'new') handleNew();
       else if (action === 'open') void handleOpen();
       else if (action === 'save') void handleSave(false);
       else if (action === 'save-as') void handleSave(true);
-      else if (action === 'save-and-close') {
-        void handleSave(false).then((saved) => window.inkfab.completeCloseAfterSave(saved));
-      }
+      else if (action === 'close-tab') void closeTab(activeIdRef.current);
+      else if (action === 'save-and-close') void saveAllAndClose();
       else if (action === 'toggle-preview') setRawMode((v) => !v);
     });
-  }, [handleNew, handleOpen, handleSave]);
-
-  const fileName = filePath ? filePath.split(/[\\/]/).pop() : 'Untitled';
+  }, [handleNew, handleOpen, handleSave, closeTab, saveAllAndClose]);
 
   return (
     <div className={`app ${rawMode ? 'raw' : ''}`}>
@@ -184,17 +235,37 @@ export default function App() {
           <img src={logoUrl} alt="InkFab" className="logo" draggable={false} />
         </div>
         <div className="titlebar-center">
-          <span className="title">{fileName}</span>
-          {dirty && <span className="dot" title="Unsaved" />}
+          <div className="tabs">
+            {tabs.map((t) => (
+              <div
+                key={t.id}
+                className={`tab ${t.id === activeId ? 'active' : ''}`}
+                onClick={() => setActiveId(t.id)}
+              >
+                <span className="title">{tabName(t)}</span>
+                {t.dirty && <span className="dot" title="Unsaved" />}
+                <button
+                  className="tab-close"
+                  title="Close tab (⌘W)"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void closeTab(t.id);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <button
+              className="tab-add"
+              title="New document (⌘N)"
+              onClick={() => handleNew()}
+            >
+              +
+            </button>
+          </div>
         </div>
         <div className="titlebar-actions">
-          <button
-            className="mode-btn"
-            onClick={() => void handleNew()}
-            title="New document (⌘N)"
-          >
-            new
-          </button>
           <button
             className={`mode-btn ${rawMode ? 'active' : ''}`}
             onClick={() => setRawMode((v) => !v)}
@@ -206,8 +277,9 @@ export default function App() {
       </header>
       <main className="workspace">
         <Editor
-          value={source}
-          filePath={filePath}
+          key={active.id}
+          value={active.source}
+          filePath={active.filePath}
           rawMode={rawMode}
           onChange={onEditorChange}
           onOpenFile={handleOpenLinkedFile}

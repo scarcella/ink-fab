@@ -33,7 +33,7 @@ contextBridge.exposeInMainWorld('inkfab', {
   saveFile: (filePath: string | null, content: string) =>
     ipcRenderer.invoke('file:save', filePath, content) as Promise<string | null>,
   confirmUnsavedChanges: (
-    action: 'open' | 'navigate' | 'new',
+    action: 'open' | 'navigate' | 'new' | 'close-tab',
     filePath: string | null
   ) =>
     ipcRenderer.invoke('dialog:confirm-unsaved', action, filePath) as Promise<
@@ -53,7 +53,14 @@ contextBridge.exposeInMainWorld('inkfab', {
   resolveFileTarget,
   onMenu: (
     handler: (
-      action: 'new' | 'open' | 'save' | 'save-as' | 'toggle-preview' | 'save-and-close'
+      action:
+        | 'new'
+        | 'open'
+        | 'save'
+        | 'save-as'
+        | 'close-tab'
+        | 'toggle-preview'
+        | 'save-and-close'
     ) => void
   ) => {
     const map = {
@@ -61,6 +68,7 @@ contextBridge.exposeInMainWorld('inkfab', {
       'menu:open': 'open',
       'menu:save': 'save',
       'menu:save-as': 'save-as',
+      'menu:close-tab': 'close-tab',
       'menu:toggle-preview': 'toggle-preview',
       'menu:save-and-close': 'save-and-close',
     } as const;

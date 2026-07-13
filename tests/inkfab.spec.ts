@@ -213,3 +213,42 @@ test('raw toggle switches view mode', async () => {
   await expect(page.locator('.app.raw')).toHaveCount(0);
   await expect(page.locator('.cm-table-block table').first()).toBeVisible();
 });
+
+test('plus button opens a new tab and switches to it', async () => {
+  const tabCountBefore = await page.locator('.tab').count();
+  await page.locator('.tab-add').click();
+  await expect(page.locator('.tab')).toHaveCount(tabCountBefore + 1);
+  // The new tab is active and empty — the previous tab's table is gone.
+  await expect(page.locator('.cm-content')).not.toContainText('| A | B |');
+
+  await page.locator('.cm-content').click();
+  await page.keyboard.type('tab three content');
+  await expect(page.locator('.cm-content')).toContainText('tab three content');
+});
+
+test('switching tabs swaps documents', async () => {
+  const tabs = page.locator('.tab');
+  await tabs.nth(0).click();
+  await expect(page.locator('.cm-content')).toContainText('one one');
+  await tabs.last().click();
+  await expect(page.locator('.cm-content')).toContainText('tab three content');
+});
+
+test('closing the active tab activates a neighbor', async () => {
+  const tabCountBefore = await page.locator('.tab').count();
+  // Dirty tab close prompts; the prompt auto-discards under INKFAB_TEST.
+  await page.locator('.tab').last().locator('.tab-close').click();
+  await expect(page.locator('.tab')).toHaveCount(tabCountBefore - 1);
+  await expect(page.locator('.cm-content')).toContainText('outside');
+});
+
+test('closing the last tab leaves a fresh empty document', async () => {
+  await page.locator('.tab.active .tab-close').click();
+  await expect(page.locator('.tab')).toHaveCount(1);
+  await expect(page.locator('.cm-content')).toContainText('one one');
+
+  await page.locator('.tab .tab-close').click();
+  await expect(page.locator('.tab')).toHaveCount(1);
+  await expect(page.locator('.tab .title')).toHaveText('Untitled');
+  await expect(page.locator('.cm-content')).not.toContainText('one one');
+});

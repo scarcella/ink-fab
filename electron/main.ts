@@ -22,7 +22,7 @@ let currentFilePath: string | null = null;
 let allowWindowClose = false;
 let isClosePromptOpen = false;
 
-type UnsavedAction = 'open' | 'navigate' | 'close' | 'new';
+type UnsavedAction = 'open' | 'navigate' | 'close' | 'new' | 'close-tab';
 
 function isAppUrl(url: string): boolean {
   if (VITE_DEV_SERVER_URL) return url.startsWith(VITE_DEV_SERVER_URL);
@@ -48,6 +48,7 @@ async function promptToSaveChanges(action: UnsavedAction, filePath: string | nul
     open: 'open another file',
     navigate: 'follow this link',
     new: 'start a new document',
+    'close-tab': 'close this tab',
   };
   const detail =
     action === 'close'
@@ -174,7 +175,7 @@ ipcMain.handle('file:save', async (_e, filePath: string | null, content: string)
 
 ipcMain.handle(
   'dialog:confirm-unsaved',
-  async (_e, action: 'open' | 'navigate', filePath: string | null) =>
+  async (_e, action: Exclude<UnsavedAction, 'close'>, filePath: string | null) =>
     promptToSaveChanges(action, filePath)
 );
 
@@ -229,7 +230,12 @@ function buildMenu() {
           click: () => mainWindow?.webContents.send('menu:save-as'),
         },
         { type: 'separator' },
-        { role: 'close' },
+        {
+          label: 'Close Tab',
+          accelerator: 'CmdOrCtrl+W',
+          click: () => mainWindow?.webContents.send('menu:close-tab'),
+        },
+        { role: 'close', label: 'Close Window', accelerator: 'Shift+CmdOrCtrl+W' },
       ],
     },
     { role: 'editMenu' },
