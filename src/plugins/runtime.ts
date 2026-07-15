@@ -62,15 +62,35 @@ function indexNodes(plugins: InkFabPlugin[]): Map<string, NodeRenderer[]> {
   return map;
 }
 
-function indexFenced(plugins: InkFabPlugin[]): Map<string, FencedLangRenderer> {
-  const map = new Map<string, FencedLangRenderer>();
+type FencedIndex = {
+  exact: Map<string, FencedLangRenderer>;
+  predicates: FencedLangRenderer[];
+};
+
+function indexFenced(plugins: InkFabPlugin[]): FencedIndex {
+  const exact = new Map<string, FencedLangRenderer>();
+  const predicates: FencedLangRenderer[] = [];
   for (const p of plugins) {
     for (const f of p.fencedLangs ?? []) {
-      const langs = Array.isArray(f.lang) ? f.lang : [f.lang];
-      for (const l of langs) map.set(l.toLowerCase(), f);
+      if (typeof f.lang === 'function') {
+        predicates.push(f);
+      } else {
+        const langs = Array.isArray(f.lang) ? f.lang : [f.lang];
+        for (const l of langs) exact.set(l.toLowerCase(), f);
+      }
     }
   }
-  return map;
+  return { exact, predicates };
+}
+
+// Exact langs win over predicates; predicates run in registry order.
+function findFenced(idx: FencedIndex, lang: string): FencedLangRenderer | null {
+  const hit = idx.exact.get(lang);
+  if (hit) return hit;
+  for (const f of idx.predicates) {
+    if ((f.lang as (l: string) => boolean)(lang)) return f;
+  }
+  return null;
 }
 
 function parseFence(state: EditorState, from: number, to: number) {
@@ -130,9 +150,9 @@ function build(
       if (name === 'FencedCode' && !ctx.touches(from, to)) {
         const parsed = parseFence(state, from, to);
         if (parsed) {
-          const handler = fencedIdx.get(parsed.lang);
+          const handler = findFenced(fencedIdx, parsed.lang);
           if (handler) {
-            const widget = safely(() => handler.toWidget(parsed.body, ctx));
+            const widget = safely(() => handler.toWidget(parsed.body, parsed.lang, ctx));
             if (widget) {
               decos.push(
                 Decoration.replace({ widget, block: true }).range(from, to)

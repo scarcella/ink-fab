@@ -11,7 +11,6 @@ import {
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 import { GFM } from '@lezer/markdown';
-import { createLiveMarkdown } from './liveMarkdown';
 import { createPluginExtension, plugins } from './plugins';
 
 const MARKDOWN_FILE_RE = /\.(md|markdown|mdown|txt)$/i;
@@ -73,12 +72,7 @@ type Props = {
 };
 
 function markdownPreviewExtensions(filePath: string | null, rawMode: boolean) {
-  return rawMode
-    ? []
-    : [
-        createLiveMarkdown(filePath),
-        createPluginExtension(plugins, filePath),
-      ];
+  return rawMode ? [] : [createPluginExtension(plugins, filePath)];
 }
 
 export default function Editor({ value, filePath, rawMode, onChange, onOpenFile }: Props) {
@@ -160,17 +154,6 @@ export default function Editor({ value, filePath, rawMode, onChange, onOpenFile 
 
     const onClick = (event: MouseEvent) => {
       if (!(event.target instanceof HTMLElement)) return;
-
-      const tocTarget = event.target.closest<HTMLElement>('[data-inkfab-toc]');
-      if (tocTarget) {
-        const id = tocTarget.dataset.inkfabToc;
-        if (id) {
-          event.preventDefault();
-          const heading = view.dom.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
-          heading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        return;
-      }
 
       const target = event.target.closest<HTMLElement>('[data-inkfab-href]');
       if (!target) return;

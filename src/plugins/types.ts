@@ -20,8 +20,10 @@ export interface ScanRenderer {
 }
 
 export interface FencedLangRenderer {
-  lang: string | string[];
-  toWidget: (body: string, ctx: PluginContext) => WidgetType | null;
+  /** Exact lang string(s), or a predicate for open-ended sets (e.g. "anything highlight.js knows"). */
+  lang: string | string[] | ((lang: string) => boolean);
+  /** Return null to decline — the fence stays as styled source lines. */
+  toWidget: (body: string, lang: string, ctx: PluginContext) => WidgetType | null;
 }
 
 export type Transform = (content: string, filePath: string) => string;
