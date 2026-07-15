@@ -2,38 +2,37 @@
 
 A quiet local markdown editor with live rendering. Everything beyond "edit text" is a plugin.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the design — minimal core, plugin everything.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the design — minimal core, plugin everything — and [`docs/PLUGINS.md`](docs/PLUGINS.md) for the plugin-author cookbook (your first plugin is ~20 lines).
 
 ---
 
 ## Plugins — status
 
-Status reflects whether a feature lives as a standalone file under `src/plugins/`. Features that still live inside `src/liveMarkdown.ts` are listed under **Roadmap**, not **Implemented**, even if they work in the app today.
+Every feature is a standalone file under `src/plugins/`, registered in `src/plugins/index.ts`. Disable any of them by commenting out one registry line.
 
 ### Implemented
 
 | Plugin | File | Extension points |
 |---|---|---|
+| `mark-hiding` | `src/plugins/mark-hiding.ts` | `nodes` |
+| `headings` | `src/plugins/headings.ts` | `nodes`, `styles` |
+| `toc` | `src/plugins/toc.ts` | `scans`, `extensions`, `styles` |
+| `blockquotes` | `src/plugins/blockquotes.ts` | `nodes`, `styles` |
+| `fenced-code` | `src/plugins/fenced-code.ts` | `nodes`, `styles` |
+| `highlight` | `src/plugins/highlight.ts` | `fencedLangs`, `styles` |
+| `mermaid` | `src/plugins/mermaid.ts` | `fencedLangs`, `styles` |
+| `tables` | `src/plugins/tables.ts` | `nodes`, `styles` |
+| `tasks` | `src/plugins/tasks.ts` | `nodes`, `styles` |
+| `images` | `src/plugins/images.ts` | `nodes`, `styles` |
+| `links` | `src/plugins/links.ts` | `nodes`, `styles` |
+| `horizontal-rule` | `src/plugins/horizontal-rule.ts` | `nodes`, `styles` |
+| `math` | `src/plugins/math.ts` | `scans`, `styles` |
 | `openai-citations` | `src/plugins/openai-citations.ts` | `onOpen` |
 
 ### Roadmap
 
-#### Tier 0 — extract from the monolith (parity with today's editor)
-Everything here works in the app but still lives in `src/liveMarkdown.ts`. Porting them is the point of the plugin migration.
-
-- [ ] `mark-hiding` — hide `**`/`_`/`` ` ``/`[]()` marks when caret is away
-- [ ] `heading-anchors` — slugify headings, assign stable ids
-- [ ] `toc` — `[[toc]]` → nav widget (depends on `heading-anchors`)
-- [ ] `tables` — GFM tables rendered as HTML tables
-- [ ] `tasks` — `- [ ]` / `- [x]` → checkbox widget
-- [ ] `images` — inline image rendering with caption
-- [ ] `horizontal-rule` — render `---` as a line
-- [ ] `katex` — `$…$` / `$$…$$` math
-- [ ] `mermaid` — ```` ```mermaid ``` ```` → diagram
-- [ ] `highlight` — ```` ```ts ``` ```` → highlight.js output
-- [ ] `footnotes` — `[^1]` → linked footnote block
-
 #### Tier 1 — authoring quality-of-life
+- [ ] `footnotes` — `[^1]` → linked footnote block (works inside table cells today via markdown-it)
 - [ ] `frontmatter` — YAML/TOML card; exposes parsed data to other plugins
 - [ ] `wikilinks` — `[[Some Note]]` resolves relative to `filePath`
 - [ ] `tags` — `#project/inkfab` → clickable chip
