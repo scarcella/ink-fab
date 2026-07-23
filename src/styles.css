@@ -4,14 +4,14 @@
    everything downstream, plugins included, styles itself off these variables,
    so a theme is nothing more than a variable block. */
 :root {
-  --bg: #faf8f3;
-  --bg-sunken: #f1ede4;
-  --bg-code: #f3efe6;
+  --bg: #f1ecdf;
+  --bg-sunken: #e6dfcd;
+  --bg-code: #e9e2d1;
   --fg: #1c1917;
-  --fg-muted: #78716c;
-  --fg-faint: #a8a29e;
-  --border: #e7e4dd;
-  --border-soft: #efece4;
+  --fg-muted: #746b5e;
+  --fg-faint: #a2988a;
+  --border: #d8d0bd;
+  --border-soft: #e2dbc8;
   --accent: #0c4a6e;
   --accent-soft: rgba(12, 74, 110, 0.08);
   --accent-contrast: #fdfcf7; /* text sitting on an --accent background */

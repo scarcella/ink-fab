@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Editor from './Editor';
-import logoUrl from '../assets/icon-source.png';
+import logoUrl from '../assets/logo.svg';
 import {
   applyOpenTransforms,
   applySaveTransforms,
