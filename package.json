@@ -11,7 +11,7 @@
     "build:icons": "node scripts/make-icon.mjs",
     "dist": "npm run build:icons && npm run build:renderer && electron-builder",
     "dist:dir": "npm run build:icons && npm run build:renderer && electron-builder --dir",
-    "install:local": "npm run dist:dir && (pkill -f '/Applications/InkFab.app/Contents/MacOS/InkFab' 2>/dev/null; true) && rm -rf '/Applications/InkFab.app' && cp -R 'release/mac-arm64/InkFab.app' /Applications/ && xattr -dr com.apple.quarantine '/Applications/InkFab.app' && open '/Applications/InkFab.app'",
+    "install:local": "npm run dist:dir && codesign --force --deep --sign - 'release/mac-arm64/InkFab.app' && (pkill -f '/Applications/InkFab.app/Contents/MacOS/InkFab' 2>/dev/null; true) && rm -rf '/Applications/InkFab.app' && cp -R 'release/mac-arm64/InkFab.app' /Applications/ && xattr -dr com.apple.quarantine '/Applications/InkFab.app' && open '/Applications/InkFab.app'",
     "preview": "vite preview",
     "test": "vite build && playwright test",
     "test:ui": "vite build && playwright test --ui"
@@ -58,7 +58,13 @@
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
-        { "target": "dmg", "arch": ["arm64", "x64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icon.icns",
       "identity": null
