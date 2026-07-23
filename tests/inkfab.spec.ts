@@ -277,3 +277,29 @@ test('theme button cycles paper → light → dark and restyles the app', async 
   await expect(themeBtn).toHaveText('paper');
   expect(await bgOf()).toBe(paperBg);
 });
+
+test('bullet markers render as real bullets, cycling with depth', async () => {
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  // Enter auto-continues the "- " marker, Tab indents into a nested list.
+  await page.keyboard.type('- one\n');
+  await page.keyboard.type('two\n');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('three');
+
+  // Caret sits at the end of "three" — off every marker — so all render.
+  const bullets = page.locator('.cm-list-bullet');
+  await expect(bullets).toHaveCount(3);
+  await expect(bullets.nth(0)).toHaveText('•');
+  await expect(bullets.nth(2)).toHaveText('◦');
+});
+
+test('task items show only the checkbox, no dash', async () => {
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  // The double Enter clears the auto-continued "- [ ] " marker line.
+  await page.keyboard.type('- [ ] todo\n\nafter');
+
+  await expect(page.locator('.cm-task-box')).toHaveCount(1);
+  await expect(page.locator('.cm-line', { hasText: 'todo' })).toHaveText('todo');
+});
