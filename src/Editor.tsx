@@ -23,7 +23,8 @@ const mdHighlight = HighlightStyle.define([
   { tag: t.url, color: 'var(--fg-muted)' },
   { tag: t.monospace, fontFamily: 'var(--font-mono)', color: 'var(--warm)' },
   { tag: t.quote, color: 'var(--fg-muted)' },
-  { tag: t.list, color: 'var(--fg-muted)' },
+  // NB: t.list would style the entire list content, not just the marks —
+  // list text must stay full-ink (this was a real shipped bug).
   { tag: t.processingInstruction, color: 'var(--fg-muted)' },
   { tag: t.contentSeparator, color: 'var(--border)' },
   { tag: t.heading1, fontWeight: '700' },

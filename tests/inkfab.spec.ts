@@ -292,6 +292,30 @@ test('bullet markers render as real bullets, cycling with depth', async () => {
   await expect(bullets).toHaveCount(3);
   await expect(bullets.nth(0)).toHaveText('•');
   await expect(bullets.nth(2)).toHaveText('◦');
+
+  // Item text is full-ink (t.list must not mute it) and each nesting level
+  // indents further via line padding.
+  const { colors, pads } = await page.evaluate(() => {
+    const find = (t: string) =>
+      [...document.querySelectorAll('.cm-line')].find((l) =>
+        l.textContent?.includes(t)
+      ) as HTMLElement;
+    const mutedSpan = (t: string) =>
+      [...find(t).querySelectorAll('span:not(.cm-list-bullet)')].some(
+        (s) => getComputedStyle(s).color !== getComputedStyle(find(t)).color
+      );
+    return {
+      colors: [mutedSpan('one'), mutedSpan('two'), mutedSpan('three')],
+      pads: ['one', 'two', 'three'].map((t) =>
+        parseFloat(getComputedStyle(find(t)).paddingLeft)
+      ),
+    };
+  });
+  expect(colors).toEqual([false, false, false]);
+  // "one" and "two" are siblings; "three" is nested one level deeper.
+  expect(pads[0]).toBeGreaterThan(0);
+  expect(pads[1]).toBe(pads[0]);
+  expect(pads[2]).toBeGreaterThan(pads[1]);
 });
 
 test('task items show only the checkbox, no dash', async () => {
