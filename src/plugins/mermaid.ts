@@ -8,18 +8,39 @@ import { blockShell } from './lib/block-shell';
 
 let mermaidIdCounter = 0;
 
+// Mermaid bakes its palette into the rendered SVG, so the widget carries the
+// theme it was rendered with: after a theme switch the editor reconfigures,
+// eq() fails, and diagrams re-render in the new palette.
+const APP_TO_MERMAID: Record<string, string> = {
+  paper: 'neutral',
+  light: 'default',
+  dark: 'dark',
+};
+
+function activeMermaidTheme(override?: string) {
+  if (override) return override;
+  const appTheme = document.documentElement.dataset.theme ?? 'paper';
+  return APP_TO_MERMAID[appTheme] ?? 'neutral';
+}
+
 class MermaidWidget extends WidgetType {
-  constructor(readonly source: string) {
+  constructor(readonly source: string, readonly theme: string) {
     super();
   }
   eq(other: MermaidWidget) {
-    return other.source === this.source;
+    return other.source === this.source && other.theme === this.theme;
   }
   toDOM() {
     const wrapper = document.createElement('div');
     wrapper.className = 'cm-mermaid-block';
     wrapper.textContent = this.source; // placeholder while rendering
     const id = `cm-mermaid-${++mermaidIdCounter}`;
+    mermaidLib.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      theme: this.theme as 'neutral',
+      fontFamily: 'var(--font-sans)',
+    });
     mermaidLib
       .render(id, this.source)
       .then(({ svg, bindFunctions }) => {
@@ -40,20 +61,17 @@ class MermaidWidget extends WidgetType {
   }
 }
 
+// Follows the app theme by default; pass { theme } to pin a mermaid theme.
 export function mermaid(opts: { theme?: string } = {}): InkFabPlugin {
-  mermaidLib.initialize({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: (opts.theme ?? 'neutral') as 'neutral',
-    fontFamily: 'var(--font-sans)',
-  });
-
   return {
     name: 'mermaid',
     fencedLangs: [
       {
         lang: 'mermaid',
-        toWidget: (body) => (body.trim() ? new MermaidWidget(body.trim()) : null),
+        toWidget: (body) =>
+          body.trim()
+            ? new MermaidWidget(body.trim(), activeMermaidTheme(opts.theme))
+            : null,
       },
     ],
     styles: `
@@ -74,8 +92,8 @@ export function mermaid(opts: { theme?: string } = {}): InkFabPlugin {
 .cm-mermaid-error {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: #9a3412;
-  background: rgba(154, 52, 18, 0.08);
+  color: var(--warm);
+  background: color-mix(in srgb, var(--warm) 10%, transparent);
   padding: 10px 12px;
   border-radius: 6px;
   white-space: pre-wrap;

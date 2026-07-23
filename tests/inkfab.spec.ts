@@ -252,3 +252,28 @@ test('closing the last tab leaves a fresh empty document', async () => {
   await expect(page.locator('.tab .title')).toHaveText('Untitled');
   await expect(page.locator('.cm-content')).not.toContainText('one one');
 });
+
+test('theme button cycles paper → light → dark and restyles the app', async () => {
+  const themeBtn = page.locator('button[title^="Color theme"]');
+  await expect(themeBtn).toHaveText('paper');
+
+  const bgOf = () =>
+    page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const paperBg = await bgOf();
+
+  await themeBtn.click();
+  await expect(themeBtn).toHaveText('light');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await bgOf()).toBe('rgb(255, 255, 255)');
+
+  await themeBtn.click();
+  await expect(themeBtn).toHaveText('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(await bgOf()).toBe('rgb(25, 24, 23)');
+
+  // The choice is persisted, and one more click wraps back to paper.
+  expect(await page.evaluate(() => localStorage.getItem('inkfab:theme'))).toBe('dark');
+  await themeBtn.click();
+  await expect(themeBtn).toHaveText('paper');
+  expect(await bgOf()).toBe(paperBg);
+});

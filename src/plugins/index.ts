@@ -30,7 +30,7 @@ export const plugins: InkFabPlugin[] = [
   blockquotes(),
   fencedCode(),
   highlight(),
-  mermaid({ theme: 'neutral' }),
+  mermaid(),
   tables(),
   tasks(),
   images(),

@@ -84,7 +84,34 @@ export function highlight(): InkFabPlugin {
   padding: 0;
   font-family: inherit;
   font-size: inherit;
+  color: var(--fg);
 }
+/* Token colors come from the theme's --code-* variables (styles.css) rather
+   than a stock highlight.js stylesheet, so all three themes restyle code. */
+.cm-code-block :is(.hljs-comment, .hljs-quote) {
+  color: var(--code-comment);
+  font-style: italic;
+}
+.cm-code-block :is(.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag, .hljs-operator) {
+  color: var(--code-keyword);
+}
+.cm-code-block :is(.hljs-string, .hljs-regexp, .hljs-addition) {
+  color: var(--code-string);
+}
+.cm-code-block :is(.hljs-number, .hljs-symbol, .hljs-bullet, .hljs-link, .hljs-selector-pseudo) {
+  color: var(--code-number);
+}
+.cm-code-block :is(.hljs-title, .hljs-section, .hljs-name, .hljs-selector-id, .hljs-selector-class) {
+  color: var(--code-title);
+}
+.cm-code-block :is(.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable, .hljs-type, .hljs-built_in, .hljs-property) {
+  color: var(--code-attr);
+}
+.cm-code-block :is(.hljs-meta, .hljs-deletion) {
+  color: var(--code-meta);
+}
+.cm-code-block .hljs-emphasis { font-style: italic; }
+.cm-code-block .hljs-strong { font-weight: 700; }
 `,
   };
 }

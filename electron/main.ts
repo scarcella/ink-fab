@@ -203,6 +203,16 @@ ipcMain.on('window:close-after-save', (_e, saved: boolean) => {
   mainWindow.close();
 });
 
+// Mirrors the renderer's persisted theme so the View ▸ Theme radios stay
+// checked correctly; the renderer is the source of truth.
+let currentTheme = 'paper';
+
+ipcMain.on('editor:set-theme', (_e, theme: string) => {
+  if (theme === currentTheme) return;
+  currentTheme = theme;
+  buildMenu();
+});
+
 function buildMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
     { role: 'appMenu' },
@@ -246,6 +256,21 @@ function buildMenu() {
           label: 'Toggle Preview',
           accelerator: 'CmdOrCtrl+/',
           click: () => mainWindow?.webContents.send('menu:toggle-preview'),
+        },
+        {
+          label: 'Theme',
+          submenu: (
+            [
+              ['paper', 'Paper'],
+              ['light', 'Light'],
+              ['dark', 'Dark'],
+            ] as const
+          ).map(([theme, label]) => ({
+            label,
+            type: 'radio' as const,
+            checked: currentTheme === theme,
+            click: () => mainWindow?.webContents.send('menu:set-theme', theme),
+          })),
         },
         { type: 'separator' },
         { role: 'reload' },

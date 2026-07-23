@@ -12,6 +12,8 @@ declare global {
       ) => Promise<'save' | 'discard' | 'cancel'>;
       setDirty: (dirty: boolean) => void;
       setCurrentFile: (filePath: string | null) => void;
+      setTheme: (theme: string) => void;
+      onSetTheme: (handler: (theme: 'paper' | 'light' | 'dark') => void) => () => void;
       completeCloseAfterSave: (saved: boolean) => void;
       openExternal: (url: string) => Promise<void>;
       openPath: (filePath: string) => Promise<string>;

@@ -60,6 +60,14 @@ flowchart LR
 ⌘O to open a file. ⌘S to save. ⌘/ to peek at the raw source.
 `;
 
+export type Theme = 'paper' | 'light' | 'dark';
+const THEMES: Theme[] = ['paper', 'light', 'dark'];
+
+const loadTheme = (): Theme => {
+  const stored = localStorage.getItem('inkfab:theme');
+  return THEMES.includes(stored as Theme) ? (stored as Theme) : 'paper';
+};
+
 type TabState = {
   id: number;
   filePath: string | null;
@@ -85,6 +93,7 @@ export default function App() {
   const [tabs, setTabs] = useState<TabState[]>([initialTab]);
   const [activeId, setActiveId] = useState(initialTab.id);
   const [rawMode, setRawMode] = useState(false);
+  const [theme, setTheme] = useState<Theme>(loadTheme);
 
   const tabsRef = useRef(tabs);
   const activeIdRef = useRef(activeId);
@@ -108,6 +117,14 @@ export default function App() {
     },
     [setTabsNow]
   );
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('inkfab:theme', theme);
+    window.inkfab.setTheme(theme); // keeps the View ▸ Theme radios in sync
+  }, [theme]);
+
+  useEffect(() => window.inkfab.onSetTheme(setTheme), []);
 
   useEffect(() => {
     window.inkfab.setDirty(tabs.some((t) => t.dirty));
@@ -267,6 +284,15 @@ export default function App() {
         </div>
         <div className="titlebar-actions">
           <button
+            className="mode-btn"
+            onClick={() =>
+              setTheme((t) => THEMES[(THEMES.indexOf(t) + 1) % THEMES.length])
+            }
+            title="Color theme (click to cycle)"
+          >
+            {theme}
+          </button>
+          <button
             className={`mode-btn ${rawMode ? 'active' : ''}`}
             onClick={() => setRawMode((v) => !v)}
             title="Toggle raw source (⌘/)"
@@ -281,6 +307,7 @@ export default function App() {
           value={active.source}
           filePath={active.filePath}
           rawMode={rawMode}
+          theme={theme}
           onChange={onEditorChange}
           onOpenFile={handleOpenLinkedFile}
         />

@@ -59,8 +59,8 @@ export function tasks(): InkFabPlugin {
   top: 0.5px;
   width: 4px;
   height: 8px;
-  border-right: 2px solid #fdfcf7;
-  border-bottom: 2px solid #fdfcf7;
+  border-right: 2px solid var(--accent-contrast);
+  border-bottom: 2px solid var(--accent-contrast);
   transform: rotate(45deg);
 }
 `,

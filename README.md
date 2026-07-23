@@ -1,6 +1,8 @@
 # InkFab
 
-A quiet local markdown editor with live rendering. Everything beyond "edit text" is a plugin.
+A quiet local markdown editor with live rendering (GitHub-Flavored Markdown dialect). Everything beyond "edit text" is a plugin.
+
+Three color themes — **paper** (default, warm old-paper), **light**, and **dark** — switchable from the titlebar button or View ▸ Theme, remembered across launches. A theme is just a CSS-variable block in `src/styles.css`; every plugin styles itself off those variables.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the design — minimal core, plugin everything — and [`docs/PLUGINS.md`](docs/PLUGINS.md) for the plugin-author cookbook (your first plugin is ~20 lines).
 

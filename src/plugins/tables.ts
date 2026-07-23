@@ -228,16 +228,16 @@ export function tables(): InkFabPlugin {
   border-bottom: none;
 }
 .cm-table-block tbody tr:nth-child(even) td {
-  background: rgba(241, 237, 228, 0.35);
+  background: color-mix(in srgb, var(--bg-sunken) 35%, transparent);
 }
 .cm-table-block a {
   color: var(--accent);
   text-decoration: underline;
-  text-decoration-color: rgba(12, 74, 110, 0.25);
+  text-decoration-color: color-mix(in srgb, var(--accent) 25%, transparent);
   text-underline-offset: 0.14em;
 }
 .cm-table-block a:hover {
-  text-decoration-color: rgba(12, 74, 110, 0.55);
+  text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 `,
   };

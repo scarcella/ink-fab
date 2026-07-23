@@ -49,11 +49,11 @@ export function links(): InkFabPlugin {
   color: var(--accent);
   cursor: pointer;
   text-decoration: underline;
-  text-decoration-color: rgba(12, 74, 110, 0.25);
+  text-decoration-color: color-mix(in srgb, var(--accent) 25%, transparent);
   text-underline-offset: 0.14em;
 }
 .cm-editor .cm-live-link:hover {
-  text-decoration-color: rgba(12, 74, 110, 0.55);
+  text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 `,
   };

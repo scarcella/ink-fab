@@ -242,6 +242,15 @@ ids can never drift from toc entries.
 - **One block-replace decoration per range.** If two plugins both try to
   block-replace the same text, CodeMirror throws (the runtime catches it, but
   one of them silently loses). Specific beats generic: claim narrowly.
+- **Color only through theme variables.** The app has three themes (paper,
+  light, dark) selected by `data-theme` on `<html>`; a theme is nothing but a
+  variable block in `styles.css`. Use `var(--fg)`, `var(--bg-sunken)`,
+  `var(--accent)`, `var(--border-soft)`, … — never hex literals — and derive
+  tints with `color-mix(in srgb, var(--accent) 25%, transparent)`. If your
+  widget bakes colors into its DOM instead of using CSS (mermaid does), store
+  the active theme on the widget and compare it in `eq()`: the editor rebuilds
+  decorations on theme switch, and a failing `eq` is what triggers your
+  re-render.
 
 ## Testing
 

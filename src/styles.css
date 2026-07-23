@@ -1,3 +1,8 @@
+/* Themes ------------------------------------------------------------------ */
+/* Three palettes — paper (default, warm old-paper), light (plain white),
+   dark (warm charcoal). The active one is the data-theme attribute on <html>;
+   everything downstream, plugins included, styles itself off these variables,
+   so a theme is nothing more than a variable block. */
 :root {
   --bg: #faf8f3;
   --bg-sunken: #f1ede4;
@@ -9,13 +14,66 @@
   --border-soft: #efece4;
   --accent: #0c4a6e;
   --accent-soft: rgba(12, 74, 110, 0.08);
+  --accent-contrast: #fdfcf7; /* text sitting on an --accent background */
   --warm: #92400e;
+  --selection: rgba(12, 74, 110, 0.12);
+  --shadow: rgba(28, 25, 23, 0.08);
+
+  /* Syntax token colors for highlighted code (see src/plugins/highlight.ts) */
+  --code-keyword: #cf222e;
+  --code-string: #0a3069;
+  --code-comment: var(--fg-muted);
+  --code-number: #0550ae;
+  --code-title: #8250df;
+  --code-attr: #953800;
+  --code-meta: #116329;
 
   --font-serif: "Iowan Old Style", "Source Serif 4", "Source Serif Pro",
     "Charter", "Palatino", "Book Antiqua", Georgia, serif;
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter",
     system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --bg-sunken: #f5f5f6;
+  --bg-code: #f4f4f5;
+  --fg: #18181b;
+  --fg-muted: #6f6f76;
+  --fg-faint: #a1a1aa;
+  --border: #e4e4e7;
+  --border-soft: #efeff1;
+  --accent: #075985;
+  --accent-soft: rgba(7, 89, 133, 0.08);
+  --accent-contrast: #ffffff;
+  --warm: #b45309;
+  --selection: rgba(7, 89, 133, 0.12);
+  --shadow: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="dark"] {
+  --bg: #191817;
+  --bg-sunken: #211f1e;
+  --bg-code: #242220;
+  --fg: #e7e2da;
+  --fg-muted: #9a938a;
+  --fg-faint: #6b655e;
+  --border: #38342f;
+  --border-soft: #2b2825;
+  --accent: #7cb8d8;
+  --accent-soft: rgba(124, 184, 216, 0.12);
+  --accent-contrast: #10222c;
+  --warm: #d99a5b;
+  --selection: rgba(124, 184, 216, 0.2);
+  --shadow: rgba(0, 0, 0, 0.45);
+
+  --code-keyword: #ff7b72;
+  --code-string: #a5d6ff;
+  --code-number: #79c0ff;
+  --code-title: #d2a8ff;
+  --code-attr: #ffa657;
+  --code-meta: #7ee787;
 }
 
 * { box-sizing: border-box; }
@@ -71,7 +129,7 @@ html, body, #root {
   height: 20px;
   border-radius: 4px;
   user-select: none;
-  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
+  box-shadow: 0 1px 2px var(--shadow);
 }
 
 .titlebar-center {
@@ -179,7 +237,7 @@ html, body, #root {
   transition: all 0.15s ease;
 }
 .mode-btn:hover { background: var(--bg-sunken); color: var(--fg); }
-.mode-btn.active { background: var(--accent); color: #fdfcf7; }
+.mode-btn.active { background: var(--accent); color: var(--accent-contrast); }
 
 /* Workspace -------------------------------------------------------------- */
 .workspace {
@@ -239,7 +297,7 @@ html, body, #root {
 /* Selection color */
 .cm-editor .cm-selectionBackground,
 .cm-editor ::selection {
-  background: var(--accent-soft) !important;
+  background: var(--selection) !important;
 }
 
 /* Reduce visual weight of scrollbars inside CM */

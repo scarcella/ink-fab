@@ -78,7 +78,7 @@ export function images(): InkFabPlugin {
   max-height: 60vh;
   margin: 0 auto;
   border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(28, 25, 23, 0.08);
+  box-shadow: 0 10px 30px var(--shadow);
 }
 .cm-image-block figcaption {
   margin-top: 0.65em;

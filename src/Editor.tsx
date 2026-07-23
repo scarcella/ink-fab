@@ -21,7 +21,7 @@ const mdHighlight = HighlightStyle.define([
   { tag: t.strikethrough, textDecoration: 'line-through' },
   { tag: t.link, color: 'var(--accent)' },
   { tag: t.url, color: 'var(--fg-muted)' },
-  { tag: t.monospace, fontFamily: 'var(--font-mono)', color: '#92400e' },
+  { tag: t.monospace, fontFamily: 'var(--font-mono)', color: 'var(--warm)' },
   { tag: t.quote, color: 'var(--fg-muted)' },
   { tag: t.list, color: 'var(--fg-muted)' },
   { tag: t.processingInstruction, color: 'var(--fg-muted)' },
@@ -55,7 +55,7 @@ const editorTheme = EditorView.theme({
   '.cm-gutters': { display: 'none' },
   '.cm-activeLine': { backgroundColor: 'transparent' },
   '&.cm-focused .cm-selectionBackground, ::selection': {
-    backgroundColor: 'rgba(12,74,110,0.12) !important',
+    backgroundColor: 'var(--selection) !important',
   },
   '.cm-cursor': {
     borderLeftWidth: '2px',
@@ -67,6 +67,7 @@ type Props = {
   value: string;
   filePath: string | null;
   rawMode: boolean;
+  theme: string;
   onChange: (v: string) => void;
   onOpenFile: (filePath: string) => void | Promise<void>;
 };
@@ -75,7 +76,7 @@ function markdownPreviewExtensions(filePath: string | null, rawMode: boolean) {
   return rawMode ? [] : [createPluginExtension(plugins, filePath)];
 }
 
-export default function Editor({ value, filePath, rawMode, onChange, onOpenFile }: Props) {
+export default function Editor({ value, filePath, rawMode, theme, onChange, onOpenFile }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const liveMarkdownCompartmentRef = useRef<Compartment | null>(null);
@@ -129,7 +130,10 @@ export default function Editor({ value, filePath, rawMode, onChange, onOpenFile 
         markdownPreviewExtensions(filePath, rawMode)
       ),
     });
-  }, [filePath, rawMode]);
+    // `theme` is a dependency so a theme switch rebuilds decorations: most
+    // styling is pure CSS, but widgets that bake the palette into their DOM
+    // (mermaid SVGs) need a rebuild to re-render in the new theme.
+  }, [filePath, rawMode, theme]);
 
   useEffect(() => {
     const view = viewRef.current;
