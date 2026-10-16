@@ -370,6 +370,35 @@ test('⇧⌘7 / ⇧⌘8 switch list types and keep numbering continuous', async 
   expect(await rawText()).toEqual(['1. one', '2. two', '3. three', '  1. nested', '4. four']);
 });
 
+test('Shift-Tab out of nested bullets continues the numbered list; Tab goes back in', async () => {
+  const rawLines = async () => {
+    await page.locator('button[title^="Toggle raw source"]').click();
+    const text = await page.locator('.cm-content').innerText();
+    await page.locator('button[title^="Toggle raw source"]').click();
+    return text.trim().split('\n');
+  };
+
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.insertText(
+    '- components\n  1. data\n  2. integrations\n     - email\n     - zoho\n  3. deploy'
+  );
+
+  // A fixed 2-space outdent used to strand the item at column 3 as a new "1.".
+  await page.locator('.cm-line', { hasText: 'zoho' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.type('billing');
+  expect((await rawLines()).slice(4)).toEqual(['     - zoho', '  3. billing', '  4. deploy']);
+
+  // Tab nests it back under "integrations", joining the bullets there.
+  await page.locator('.cm-line', { hasText: 'billing' }).click();
+  await page.keyboard.press('Tab');
+  expect((await rawLines()).slice(4)).toEqual(['     - zoho', '     - billing', '  3. deploy']);
+});
+
 test('folder sidebar lists markdown files and opens them in tabs', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'inkfab-folder-'));
   try {
