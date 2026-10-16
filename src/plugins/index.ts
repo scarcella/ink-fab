@@ -9,6 +9,7 @@ import { mermaid } from './mermaid';
 import { tables } from './tables';
 import { tasks } from './tasks';
 import { lists } from './lists';
+import { listToggle } from './list-toggle';
 import { images } from './images';
 import { links } from './links';
 import { horizontalRule } from './horizontal-rule';
@@ -35,6 +36,7 @@ export const plugins: InkFabPlugin[] = [
   tables(),
   tasks(),
   lists(),
+  listToggle(),
   images(),
   links(),
   horizontalRule(),

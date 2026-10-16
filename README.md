@@ -26,6 +26,7 @@ Every feature is a standalone file under `src/plugins/`, registered in `src/plug
 | `tables` | `src/plugins/tables.ts` | `nodes`, `styles` |
 | `tasks` | `src/plugins/tasks.ts` | `nodes`, `styles` |
 | `lists` | `src/plugins/lists.ts` | `nodes`, `styles` |
+| `list-toggle` | `src/plugins/list-toggle.ts` | `extensions` (⇧⌘7 numbered, ⇧⌘8 bullets) |
 | `images` | `src/plugins/images.ts` | `nodes`, `styles` |
 | `links` | `src/plugins/links.ts` | `nodes`, `styles` |
 | `horizontal-rule` | `src/plugins/horizontal-rule.ts` | `nodes`, `styles` |

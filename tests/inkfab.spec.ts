@@ -330,6 +330,46 @@ test('task items show only the checkbox, no dash', async () => {
   await expect(page.locator('.cm-line', { hasText: 'todo' })).toHaveText('todo');
 });
 
+test('⇧⌘7 / ⇧⌘8 switch list types and keep numbering continuous', async () => {
+  const rawText = async () => {
+    await page.locator('button[title^="Toggle raw source"]').click();
+    const text = await page.locator('.cm-content').innerText();
+    await page.locator('button[title^="Toggle raw source"]').click();
+    return text.trim().split('\n');
+  };
+
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.insertText('1. one\n2. two\n3. three\n  - nested\n4. four');
+
+  // Bullet a numbered item: the items after it keep counting from above.
+  await page.locator('.cm-line', { hasText: 'two' }).click();
+  await page.keyboard.press('Meta+Shift+8');
+  expect(await rawText()).toEqual(['1. one', '- two', '2. three', '  - nested', '3. four']);
+
+  // And back: it slots into the count, the rest shift down past the nested bullet.
+  await page.locator('.cm-line', { hasText: 'two' }).click();
+  await page.keyboard.press('Meta+Shift+7');
+  expect(await rawText()).toEqual(['1. one', '2. two', '3. three', '  - nested', '4. four']);
+
+  // Same key again turns the list off; a plain line becomes an item.
+  await page.locator('.cm-line', { hasText: 'four' }).click();
+  await page.keyboard.press('Meta+Shift+7');
+  expect((await rawText())[4]).toBe('four');
+  await page.locator('.cm-line', { hasText: 'four' }).click(); // rawText() took focus
+  await page.keyboard.press('Meta+Shift+8');
+  expect((await rawText())[4]).toBe('- four');
+
+  // A multi-line selection converts every line, numbered in order.
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Meta+Shift+8');
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Meta+Shift+7');
+  expect(await rawText()).toEqual(['1. one', '2. two', '3. three', '  1. nested', '4. four']);
+});
+
 test('folder sidebar lists markdown files and opens them in tabs', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'inkfab-folder-'));
   try {
