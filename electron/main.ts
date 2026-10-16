@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu, nativeImage, shell } from 'electron';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { watch, type FSWatcher } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -203,6 +204,95 @@ ipcMain.on('window:close-after-save', (_e, saved: boolean) => {
   mainWindow.close();
 });
 
+// Folder sidebar ----------------------------------------------------------
+// The renderer owns which folder is open (it persists it); main only lists a
+// folder's markdown files and watches it so the tree stays live.
+
+type FolderEntry = { name: string; path: string; children?: FolderEntry[] };
+
+const MARKDOWN_FILE_RE = /\.(md|markdown|mdown|txt)$/i;
+const SKIPPED_DIRS = new Set(['node_modules']);
+const MAX_FOLDER_FILES = 5000;
+
+// Markdown files only, dot-entries and node_modules skipped, folders that
+// contain no markdown pruned. Folders sort before files, both by name.
+async function listMarkdownTree(dir: string, budget = { files: MAX_FOLDER_FILES }) {
+  const dirents = await readdir(dir, { withFileTypes: true }).catch(() => []);
+  dirents.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  const folders: FolderEntry[] = [];
+  const files: FolderEntry[] = [];
+  for (const d of dirents) {
+    if (budget.files <= 0) break;
+    if (d.name.startsWith('.')) continue;
+    const full = path.join(dir, d.name);
+    if (d.isDirectory()) {
+      if (SKIPPED_DIRS.has(d.name)) continue;
+      const children = await listMarkdownTree(full, budget);
+      if (children.length) folders.push({ name: d.name, path: full, children });
+    } else if (d.isFile() && MARKDOWN_FILE_RE.test(d.name)) {
+      budget.files--;
+      files.push({ name: d.name, path: full });
+    }
+  }
+  return [...folders, ...files];
+}
+
+let folderWatcher: FSWatcher | null = null;
+let folderChangeTimer: ReturnType<typeof setTimeout> | null = null;
+
+function watchFolder(dir: string | null) {
+  folderWatcher?.close();
+  folderWatcher = null;
+  if (!dir) return;
+  try {
+    folderWatcher = watch(dir, { recursive: true }, () => {
+      // Saves and git checkouts arrive as bursts of events; coalesce them.
+      if (folderChangeTimer) clearTimeout(folderChangeTimer);
+      folderChangeTimer = setTimeout(() => {
+        mainWindow?.webContents.send('folder:changed');
+      }, 200);
+    });
+    folderWatcher.on('error', () => watchFolder(null));
+  } catch {
+    // Unwatchable (permissions, network volume): the tree just won't auto-refresh.
+  }
+}
+
+async function pickFolder() {
+  if (!mainWindow) return;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory', 'createDirectory'],
+  });
+  if (result.canceled || result.filePaths.length === 0) return;
+  mainWindow.webContents.send('folder:opened', result.filePaths[0]);
+}
+
+ipcMain.handle('folder:pick', () => pickFolder());
+
+// Returns null when the folder is gone, so the renderer can forget it.
+ipcMain.handle('folder:list', async (_e, dir: string) => {
+  try {
+    await readdir(dir);
+  } catch {
+    watchFolder(null);
+    return null;
+  }
+  watchFolder(dir);
+  return listMarkdownTree(dir);
+});
+
+ipcMain.on('folder:close', () => watchFolder(null));
+
+// Mirrors the renderer's persisted theme so the View ▸ Theme radios stay
+// checked correctly; the renderer is the source of truth.
+let currentTheme = 'paper';
+
+ipcMain.on('editor:set-theme', (_e, theme: string) => {
+  if (theme === currentTheme) return;
+  currentTheme = theme;
+  buildMenu();
+});
+
 function buildMenu() {
   const template: Electron.MenuItemConstructorOptions[] = [
     { role: 'appMenu' },
@@ -219,6 +309,16 @@ function buildMenu() {
           accelerator: 'CmdOrCtrl+O',
           click: () => mainWindow?.webContents.send('menu:open'),
         },
+        {
+          label: 'Open Folder…',
+          accelerator: 'Shift+CmdOrCtrl+O',
+          click: () => void pickFolder(),
+        },
+        {
+          label: 'Close Folder',
+          click: () => mainWindow?.webContents.send('menu:close-folder'),
+        },
+        { type: 'separator' },
         {
           label: 'Save',
           accelerator: 'CmdOrCtrl+S',
@@ -243,9 +343,29 @@ function buildMenu() {
       label: 'View',
       submenu: [
         {
+          label: 'Toggle Sidebar',
+          accelerator: 'CmdOrCtrl+\\',
+          click: () => mainWindow?.webContents.send('menu:toggle-sidebar'),
+        },
+        {
           label: 'Toggle Preview',
           accelerator: 'CmdOrCtrl+/',
           click: () => mainWindow?.webContents.send('menu:toggle-preview'),
+        },
+        {
+          label: 'Theme',
+          submenu: (
+            [
+              ['paper', 'Paper'],
+              ['light', 'Light'],
+              ['dark', 'Dark'],
+            ] as const
+          ).map(([theme, label]) => ({
+            label,
+            type: 'radio' as const,
+            checked: currentTheme === theme,
+            click: () => mainWindow?.webContents.send('menu:set-theme', theme),
+          })),
         },
         { type: 'separator' },
         { role: 'reload' },

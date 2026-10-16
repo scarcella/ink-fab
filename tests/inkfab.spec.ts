@@ -1,5 +1,7 @@
 import { test, expect, _electron as electron, ElectronApplication, Page } from '@playwright/test';
 import path from 'node:path';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -251,4 +253,129 @@ test('closing the last tab leaves a fresh empty document', async () => {
   await expect(page.locator('.tab')).toHaveCount(1);
   await expect(page.locator('.tab .title')).toHaveText('Untitled');
   await expect(page.locator('.cm-content')).not.toContainText('one one');
+});
+
+test('theme button cycles paper → light → dark and restyles the app', async () => {
+  const themeBtn = page.locator('button[title^="Color theme"]');
+  await expect(themeBtn).toHaveText('paper');
+
+  const bgOf = () =>
+    page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const paperBg = await bgOf();
+
+  await themeBtn.click();
+  await expect(themeBtn).toHaveText('light');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await bgOf()).toBe('rgb(255, 255, 255)');
+
+  await themeBtn.click();
+  await expect(themeBtn).toHaveText('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(await bgOf()).toBe('rgb(25, 24, 23)');
+
+  // The choice is persisted, and one more click wraps back to paper.
+  expect(await page.evaluate(() => localStorage.getItem('inkfab:theme'))).toBe('dark');
+  await themeBtn.click();
+  await expect(themeBtn).toHaveText('paper');
+  expect(await bgOf()).toBe(paperBg);
+});
+
+test('bullet markers render as real bullets, cycling with depth', async () => {
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  // Enter auto-continues the "- " marker, Tab indents into a nested list.
+  await page.keyboard.type('- one\n');
+  await page.keyboard.type('two\n');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('three');
+
+  // Caret sits at the end of "three" — off every marker — so all render.
+  const bullets = page.locator('.cm-list-bullet');
+  await expect(bullets).toHaveCount(3);
+  await expect(bullets.nth(0)).toHaveText('•');
+  await expect(bullets.nth(2)).toHaveText('◦');
+
+  // Item text is full-ink (t.list must not mute it) and each nesting level
+  // indents further via line padding.
+  const { colors, pads } = await page.evaluate(() => {
+    const find = (t: string) =>
+      [...document.querySelectorAll('.cm-line')].find((l) =>
+        l.textContent?.includes(t)
+      ) as HTMLElement;
+    const mutedSpan = (t: string) =>
+      [...find(t).querySelectorAll('span:not(.cm-list-bullet)')].some(
+        (s) => getComputedStyle(s).color !== getComputedStyle(find(t)).color
+      );
+    return {
+      colors: [mutedSpan('one'), mutedSpan('two'), mutedSpan('three')],
+      pads: ['one', 'two', 'three'].map((t) =>
+        parseFloat(getComputedStyle(find(t)).paddingLeft)
+      ),
+    };
+  });
+  expect(colors).toEqual([false, false, false]);
+  // "one" and "two" are siblings; "three" is nested one level deeper.
+  expect(pads[0]).toBeGreaterThan(0);
+  expect(pads[1]).toBe(pads[0]);
+  expect(pads[2]).toBeGreaterThan(pads[1]);
+});
+
+test('task items show only the checkbox, no dash', async () => {
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  // The double Enter clears the auto-continued "- [ ] " marker line.
+  await page.keyboard.type('- [ ] todo\n\nafter');
+
+  await expect(page.locator('.cm-task-box')).toHaveCount(1);
+  await expect(page.locator('.cm-line', { hasText: 'todo' })).toHaveText('todo');
+});
+
+test('folder sidebar lists markdown files and opens them in tabs', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'inkfab-folder-'));
+  try {
+    await mkdir(path.join(dir, 'notes'));
+    await mkdir(path.join(dir, 'node_modules'));
+    await mkdir(path.join(dir, '.git'));
+    await writeFile(path.join(dir, 'readme.md'), '# Readme\n\nroot file');
+    await writeFile(path.join(dir, 'notes', 'idea.md'), '# Idea\n\nnested file');
+    await writeFile(path.join(dir, 'picture.png'), '');
+    await writeFile(path.join(dir, 'node_modules', 'dep.md'), 'skip');
+    await writeFile(path.join(dir, '.git', 'HEAD.md'), 'skip');
+
+    // Same path File ▸ Open Folder takes once the native dialog resolves.
+    await app.evaluate(({ BrowserWindow }, d) => {
+      BrowserWindow.getAllWindows()[0]?.webContents.send('folder:opened', d);
+    }, dir);
+
+    const sidebar = page.locator('.sidebar');
+    await expect(sidebar.locator('.sidebar-header')).toHaveText(path.basename(dir));
+    // Folders first, collapsed; non-markdown, hidden and node_modules skipped.
+    await expect(sidebar.locator('.sidebar-row')).toHaveText(['›notes', 'readme']);
+
+    await sidebar.locator('.sidebar-dir', { hasText: 'notes' }).click();
+    await sidebar.locator('.sidebar-file', { hasText: 'idea' }).click();
+    await expect(page.locator('.tab.active .title')).toHaveText('idea.md');
+    await expect(page.locator('.cm-content')).toContainText('nested file');
+    await expect(sidebar.locator('.sidebar-file.active')).toHaveText('idea');
+
+    // Re-clicking an open file switches to its tab rather than duplicating it.
+    const tabCount = await page.locator('.tab').count();
+    await sidebar.locator('.sidebar-file', { hasText: 'readme' }).click();
+    await sidebar.locator('.sidebar-file', { hasText: 'idea' }).click();
+    await expect(page.locator('.tab')).toHaveCount(tabCount + 1);
+
+    // The tree follows the disk.
+    await writeFile(path.join(dir, 'later.md'), 'new');
+    await expect(sidebar.locator('.sidebar-file', { hasText: 'later' })).toBeVisible();
+
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.webContents.send('menu:close-folder');
+    });
+    await expect(sidebar.locator('.sidebar-open')).toBeVisible();
+
+    await page.locator('button[title^="Toggle sidebar"]').click();
+    await expect(page.locator('.sidebar')).toHaveCount(0);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

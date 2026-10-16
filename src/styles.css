@@ -1,21 +1,79 @@
+/* Themes ------------------------------------------------------------------ */
+/* Three palettes — paper (default, warm old-paper), light (plain white),
+   dark (warm charcoal). The active one is the data-theme attribute on <html>;
+   everything downstream, plugins included, styles itself off these variables,
+   so a theme is nothing more than a variable block. */
 :root {
-  --bg: #faf8f3;
-  --bg-sunken: #f1ede4;
-  --bg-code: #f3efe6;
+  --bg: #f1ecdf;
+  --bg-sunken: #e6dfcd;
+  --bg-code: #e9e2d1;
   --fg: #1c1917;
-  --fg-muted: #78716c;
-  --fg-faint: #a8a29e;
-  --border: #e7e4dd;
-  --border-soft: #efece4;
+  --fg-muted: #746b5e;
+  --fg-faint: #a2988a;
+  --border: #d8d0bd;
+  --border-soft: #e2dbc8;
   --accent: #0c4a6e;
   --accent-soft: rgba(12, 74, 110, 0.08);
+  --accent-contrast: #fdfcf7; /* text sitting on an --accent background */
   --warm: #92400e;
+  --selection: rgba(12, 74, 110, 0.12);
+  --shadow: rgba(28, 25, 23, 0.08);
+
+  /* Syntax token colors for highlighted code (see src/plugins/highlight.ts) */
+  --code-keyword: #cf222e;
+  --code-string: #0a3069;
+  --code-comment: var(--fg-muted);
+  --code-number: #0550ae;
+  --code-title: #8250df;
+  --code-attr: #953800;
+  --code-meta: #116329;
 
   --font-serif: "Iowan Old Style", "Source Serif 4", "Source Serif Pro",
     "Charter", "Palatino", "Book Antiqua", Georgia, serif;
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter",
     system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --bg-sunken: #f5f5f6;
+  --bg-code: #f4f4f5;
+  --fg: #18181b;
+  --fg-muted: #6f6f76;
+  --fg-faint: #a1a1aa;
+  --border: #e4e4e7;
+  --border-soft: #efeff1;
+  --accent: #075985;
+  --accent-soft: rgba(7, 89, 133, 0.08);
+  --accent-contrast: #ffffff;
+  --warm: #b45309;
+  --selection: rgba(7, 89, 133, 0.12);
+  --shadow: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="dark"] {
+  --bg: #191817;
+  --bg-sunken: #211f1e;
+  --bg-code: #242220;
+  --fg: #e7e2da;
+  --fg-muted: #9a938a;
+  --fg-faint: #6b655e;
+  --border: #38342f;
+  --border-soft: #2b2825;
+  --accent: #7cb8d8;
+  --accent-soft: rgba(124, 184, 216, 0.12);
+  --accent-contrast: #10222c;
+  --warm: #d99a5b;
+  --selection: rgba(124, 184, 216, 0.2);
+  --shadow: rgba(0, 0, 0, 0.45);
+
+  --code-keyword: #ff7b72;
+  --code-string: #a5d6ff;
+  --code-number: #79c0ff;
+  --code-title: #d2a8ff;
+  --code-attr: #ffa657;
+  --code-meta: #7ee787;
 }
 
 * { box-sizing: border-box; }
@@ -71,7 +129,7 @@ html, body, #root {
   height: 20px;
   border-radius: 4px;
   user-select: none;
-  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.08);
+  box-shadow: 0 1px 2px var(--shadow);
 }
 
 .titlebar-center {
@@ -179,16 +237,19 @@ html, body, #root {
   transition: all 0.15s ease;
 }
 .mode-btn:hover { background: var(--bg-sunken); color: var(--fg); }
-.mode-btn.active { background: var(--accent); color: #fdfcf7; }
+.mode-btn.active { background: var(--accent); color: var(--accent-contrast); }
 
 /* Workspace -------------------------------------------------------------- */
 .workspace {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  display: flex;
 }
 
 .editor-host {
+  flex: 1;
+  min-width: 0;
   height: 100%;
   overflow: auto;
   scrollbar-width: thin;
@@ -201,7 +262,102 @@ html, body, #root {
 }
 .editor-host:hover::-webkit-scrollbar-thumb { background: var(--border); }
 
+/* Sidebar ---------------------------------------------------------------- */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-soft);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--fg-muted);
+  user-select: none;
+}
+
+.sidebar-header {
+  padding: 10px 14px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 6px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  padding-right: 8px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sidebar-row:hover { background: var(--bg-sunken); color: var(--fg); }
+.sidebar-file.active { background: var(--bg-sunken); color: var(--fg); font-weight: 500; }
+.sidebar-row:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+
+/* Files line their text up with folder names, past the caret's slot. */
+.sidebar-file .sidebar-name { margin-left: 14px; }
+
+.sidebar-caret {
+  width: 10px;
+  flex-shrink: 0;
+  color: var(--fg-faint);
+  transition: transform 0.12s ease;
+}
+.sidebar-caret.open { transform: rotate(90deg); }
+
+.sidebar-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-empty,
+.sidebar-none {
+  padding: 16px 14px;
+  color: var(--fg-faint);
+}
+.sidebar-empty p { margin: 0 0 10px; }
+
+.sidebar-open {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.sidebar-open:hover { background: var(--bg-sunken); }
+
+.sidebar-hint {
+  margin-left: 8px;
+  font-size: 11px;
+}
+
 /* Live-rendered markdown in the editor ----------------------------------- */
+/* Plugin-specific widget CSS lives with each plugin in src/plugins/*.ts
+   (the `styles` field); only core editor rules belong here. */
 /* CodeMirror's height map measures lines and block widgets without their
    vertical margins, so any margin here skews posAtCoords (clicks land on the
    wrong line) and vertical cursor motion. All vertical spacing inside the
@@ -210,298 +366,15 @@ html, body, #root {
   padding: 0.08em 0;
 }
 
-.cm-editor .cm-h {
-  font-family: var(--font-serif);
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  color: var(--fg);
-  padding-top: 1.8em;
-  padding-bottom: 0.5em;
-  line-height: 1.2;
-}
-.cm-editor .cm-h1 { font-size: 2em; }
-.cm-editor .cm-h2 { font-size: 1.55em; }
-.cm-editor .cm-h3 { font-size: 1.25em; }
-.cm-editor .cm-h4 { font-size: 1.1em; font-style: italic; color: var(--fg); }
-.cm-editor .cm-h5,
-.cm-editor .cm-h6 {
-  font-size: 1em;
-  color: var(--fg-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.cm-editor .cm-quote {
-  color: var(--fg-muted);
-  font-style: italic;
-  border-left: 2px solid var(--border);
-  padding-left: 1.2em;
-  margin-left: -1.2em;
-}
-
-.cm-editor .cm-code-line {
-  font-family: var(--font-mono);
-  font-size: 0.88em;
-  background: var(--bg-code);
-  line-height: 1.6;
-  padding-left: 1.25em;
-  padding-right: 1.25em;
-}
-
-.cm-editor .cm-hr-line {
-  position: relative;
-  text-align: center;
-  color: transparent;
-  user-select: none;
-  padding: 0.4em 0;
-}
-.cm-editor .cm-hr-line::before {
-  content: "";
-  display: block;
-  border-top: 1px solid var(--border);
-  width: 40%;
-  margin: 0 auto;
-}
-
-/* Task list checkbox widget */
-.cm-task-box {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid var(--fg-muted);
-  border-radius: 3px;
-  margin-right: 6px;
-  position: relative;
-  top: 2px;
-  background: transparent;
-}
-.cm-task-box.checked {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-.cm-task-box.checked::after {
-  content: "";
-  position: absolute;
-  left: 3.5px;
-  top: 0.5px;
-  width: 4px;
-  height: 8px;
-  border-right: 2px solid #fdfcf7;
-  border-bottom: 2px solid #fdfcf7;
-  transform: rotate(45deg);
-}
-
-/* Math widgets */
-.cm-math-inline {
-  display: inline-block;
-  padding: 0 2px;
-  color: var(--fg);
-}
-.cm-math-block {
-  display: block;
-  text-align: center;
-  padding: 1.7em 0;
-  font-size: 1.05em;
-}
-
-/* KaTeX overrides: keep it refined, not shouty */
-.katex { font-size: 1.02em; }
-.katex-display { margin: 0; }
-
-/* Inline links + images in the live view */
+/* Inline links colored by syntax highlighting */
 .cm-editor .cm-link, .cm-editor .tok-link, .cm-editor [class*="link"] a {
   color: var(--accent);
-}
-.cm-editor .cm-live-link {
-  color: var(--accent);
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: rgba(12, 74, 110, 0.25);
-  text-underline-offset: 0.14em;
-}
-.cm-editor .cm-live-link:hover {
-  text-decoration-color: rgba(12, 74, 110, 0.55);
-}
-
-.cm-image-block {
-  margin: 0;
-  padding: 1.4em 0;
-  text-align: center;
-}
-.cm-image-block img {
-  display: block;
-  max-width: min(100%, 820px);
-  max-height: 60vh;
-  margin: 0 auto;
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(28, 25, 23, 0.08);
-}
-.cm-image-block figcaption {
-  margin-top: 0.65em;
-  font-family: var(--font-sans);
-  font-size: 12px;
-  color: var(--fg-muted);
-  letter-spacing: 0.02em;
-}
-
-/* Table widget (GFM tables) */
-.cm-table-block {
-  overflow-x: auto;
-  padding: 1.4em 0;
-}
-.cm-table-block table {
-  width: max-content;
-  max-width: 100%;
-  border-collapse: collapse;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.45;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  table-layout: auto;
-}
-.cm-table-block th,
-.cm-table-block td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border-soft);
-  border-right: 1px solid var(--border-soft);
-  vertical-align: top;
-  word-break: normal;
-  overflow-wrap: break-word;
-  hyphens: none;
-  min-width: 7ch;
-}
-.cm-table-block thead th {
-  white-space: nowrap;
-}
-.cm-table-block th:last-child,
-.cm-table-block td:last-child {
-  border-right: none;
-}
-.cm-table-block tr:last-child td {
-  border-bottom: none;
-}
-.cm-table-block thead th {
-  background: var(--bg-sunken);
-  font-weight: 600;
-  color: var(--fg);
-}
-.cm-table-block tbody tr:nth-child(even) td {
-  background: rgba(241, 237, 228, 0.35);
-}
-.cm-table-block a {
-  color: var(--accent);
-  text-decoration: underline;
-  text-decoration-color: rgba(12, 74, 110, 0.25);
-  text-underline-offset: 0.14em;
-}
-.cm-table-block a:hover {
-  text-decoration-color: rgba(12, 74, 110, 0.55);
 }
 
 /* Bordered block widgets (toc, code, mermaid) keep their card styling on an
    inner element; the shell supplies the vertical spacing as padding. */
 .cm-block-shell {
   padding: 1.2em 0;
-}
-
-/* Table of contents */
-.cm-toc-block {
-  margin: 0;
-  padding: 14px 18px 16px;
-  background: var(--bg-sunken);
-  border: 1px solid var(--border-soft);
-  border-radius: 10px;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.6;
-}
-.cm-toc-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--fg-muted);
-  margin-bottom: 6px;
-  font-weight: 600;
-}
-.cm-toc-block ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.cm-toc-block li {
-  padding: 2px 0;
-}
-.cm-toc-block a {
-  color: var(--fg);
-  text-decoration: none;
-  cursor: pointer;
-}
-.cm-toc-block a:hover {
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
-
-/* Highlighted fenced code block (widget) */
-.cm-code-block {
-  margin: 0;
-  border: 1px solid var(--border-soft);
-  border-radius: 10px;
-  background: var(--bg-sunken);
-  overflow: hidden;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.55;
-}
-.cm-code-block .cm-code-lang {
-  font-family: var(--font-sans);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--fg-muted);
-  padding: 6px 14px;
-  border-bottom: 1px solid var(--border-soft);
-  background: rgba(0, 0, 0, 0.02);
-}
-.cm-code-block pre {
-  margin: 0;
-  padding: 12px 14px;
-  overflow-x: auto;
-}
-.cm-code-block code.hljs {
-  background: transparent;
-  padding: 0;
-  font-family: inherit;
-  font-size: inherit;
-}
-
-/* Mermaid diagrams */
-.cm-mermaid-block {
-  margin: 0;
-  padding: 1.2em;
-  display: flex;
-  justify-content: center;
-  background: var(--bg);
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  overflow-x: auto;
-}
-.cm-mermaid-block svg {
-  max-width: 100%;
-  height: auto;
-}
-.cm-mermaid-error {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: #9a3412;
-  background: rgba(154, 52, 18, 0.08);
-  padding: 10px 12px;
-  border-radius: 6px;
-  white-space: pre-wrap;
-  margin: 0;
 }
 
 /* Raw-source mode: reveal marks + use mono */
@@ -511,9 +384,6 @@ html, body, #root {
   line-height: 1.7;
   color: var(--fg);
 }
-.app.raw .cm-editor .cm-h { font-size: 1em; font-weight: 500; }
-.app.raw .cm-editor .cm-hr-line::before { display: none; }
-.app.raw .cm-editor .cm-hr-line { color: var(--fg-muted); }
 
 /* Subtle "typewriter" feel: slight focus ring on the active paragraph */
 .cm-editor .cm-activeLine {
@@ -523,7 +393,7 @@ html, body, #root {
 /* Selection color */
 .cm-editor .cm-selectionBackground,
 .cm-editor ::selection {
-  background: var(--accent-soft) !important;
+  background: var(--selection) !important;
 }
 
 /* Reduce visual weight of scrollbars inside CM */

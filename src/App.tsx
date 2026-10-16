@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Editor from './Editor';
+import Sidebar from './Sidebar';
+import type { FolderEntry } from './global';
 import logoUrl from '../assets/icon-source.png';
 import {
   applyOpenTransforms,
@@ -60,6 +62,28 @@ flowchart LR
 ⌘O to open a file. ⌘S to save. ⌘/ to peek at the raw source.
 `;
 
+export type Theme = 'paper' | 'light' | 'dark';
+const THEMES: Theme[] = ['paper', 'light', 'dark'];
+
+const loadTheme = (): Theme => {
+  const stored = localStorage.getItem('inkfab:theme');
+  return THEMES.includes(stored as Theme) ? (stored as Theme) : 'paper';
+};
+
+const readStored = (key: string) => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const writeStored = (key: string, value: string | null) => {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {}
+};
+
 type TabState = {
   id: number;
   filePath: string | null;
@@ -85,6 +109,10 @@ export default function App() {
   const [tabs, setTabs] = useState<TabState[]>([initialTab]);
   const [activeId, setActiveId] = useState(initialTab.id);
   const [rawMode, setRawMode] = useState(false);
+  const [theme, setTheme] = useState<Theme>(loadTheme);
+  const [folder, setFolder] = useState<string | null>(() => readStored('inkfab:folder'));
+  const [tree, setTree] = useState<FolderEntry[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(() => readStored('inkfab:folder') !== null);
 
   const tabsRef = useRef(tabs);
   const activeIdRef = useRef(activeId);
@@ -107,6 +135,47 @@ export default function App() {
       );
     },
     [setTabsNow]
+  );
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('inkfab:theme', theme);
+    window.inkfab.setTheme(theme); // keeps the View ▸ Theme radios in sync
+  }, [theme]);
+
+  useEffect(() => window.inkfab.onSetTheme(setTheme), []);
+
+  // The open folder is remembered across launches; a folder that has since
+  // been deleted or moved is quietly forgotten.
+  useEffect(() => {
+    writeStored('inkfab:folder', folder);
+    if (!folder) {
+      setTree([]);
+      window.inkfab.closeFolder();
+      return;
+    }
+    let cancelled = false;
+    const refresh = async () => {
+      const next = await window.inkfab.listFolder(folder);
+      if (cancelled) return;
+      if (next === null) setFolder(null);
+      else setTree(next);
+    };
+    void refresh();
+    const offChanged = window.inkfab.onFolderChanged(() => void refresh());
+    return () => {
+      cancelled = true;
+      offChanged();
+    };
+  }, [folder]);
+
+  useEffect(
+    () =>
+      window.inkfab.onFolderOpened((dir) => {
+        setFolder(dir);
+        setSidebarOpen(true);
+      }),
+    []
   );
 
   useEffect(() => {
@@ -224,6 +293,8 @@ export default function App() {
       else if (action === 'close-tab') void closeTab(activeIdRef.current);
       else if (action === 'save-and-close') void saveAllAndClose();
       else if (action === 'toggle-preview') setRawMode((v) => !v);
+      else if (action === 'toggle-sidebar') setSidebarOpen((v) => !v);
+      else if (action === 'close-folder') setFolder(null);
     });
   }, [handleNew, handleOpen, handleSave, closeTab, saveAllAndClose]);
 
@@ -267,6 +338,22 @@ export default function App() {
         </div>
         <div className="titlebar-actions">
           <button
+            className="mode-btn"
+            onClick={() =>
+              setTheme((t) => THEMES[(THEMES.indexOf(t) + 1) % THEMES.length])
+            }
+            title="Color theme (click to cycle)"
+          >
+            {theme}
+          </button>
+          <button
+            className={`mode-btn ${sidebarOpen ? 'active' : ''}`}
+            onClick={() => setSidebarOpen((v) => !v)}
+            title="Toggle sidebar (⌘\)"
+          >
+            files
+          </button>
+          <button
             className={`mode-btn ${rawMode ? 'active' : ''}`}
             onClick={() => setRawMode((v) => !v)}
             title="Toggle raw source (⌘/)"
@@ -276,11 +363,21 @@ export default function App() {
         </div>
       </header>
       <main className="workspace">
+        {sidebarOpen && (
+          <Sidebar
+            key={folder ?? ''}
+            folder={folder}
+            tree={tree}
+            activePath={active.filePath}
+            onOpenFile={(p) => void handleOpenLinkedFile(p)}
+          />
+        )}
         <Editor
           key={active.id}
           value={active.source}
           filePath={active.filePath}
           rawMode={rawMode}
+          theme={theme}
           onChange={onEditorChange}
           onOpenFile={handleOpenLinkedFile}
         />

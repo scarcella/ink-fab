@@ -1,18 +1,20 @@
 # InkFab architecture — minimal core, plugin everything
 
+> **Status: shipped.** The migration described below is complete. `src/liveMarkdown.ts` is gone; every rendering/transformation concern lives in its own file under `src/plugins/`, registered in `src/plugins/index.ts`. To write a plugin, read **[PLUGINS.md](./PLUGINS.md)** — it's a cookbook with working recipes. The rest of this document is the design rationale.
+
 ## Guiding principle
 
 **If you can remove a feature by deleting a file and one line of imports, the architecture is right.**
 
-Today InkFab fails this test. `src/liveMarkdown.ts` is ~700 lines, and features like tables, Mermaid, highlight.js, math, TOC, and citation stripping are wired directly into a single `build()` function. Adding a feature means editing that file. Removing one means hunting through it.
+InkFab used to fail this test. `src/liveMarkdown.ts` was ~700 lines, and features like tables, Mermaid, highlight.js, math, TOC, and citation stripping were wired directly into a single `build()` function. Adding a feature meant editing that file. Removing one meant hunting through it.
 
-This document proposes an architecture where the core knows how to edit markdown and dispatch decorations, and every actual rendering/transformation concern is a plugin. The goal is "a new contributor reads one plugin file to understand one feature."
+The architecture below fixes that: the core knows how to edit markdown and dispatch decorations, and every actual rendering/transformation concern is a plugin. The goal is "a new contributor reads one plugin file to understand one feature."
 
 ---
 
-## Honest audit of what's in the monolith today
+## Honest audit of what was in the monolith
 
-Each of these is a candidate plugin — they have nothing to do with each other except happening to live in `liveMarkdown.ts`:
+Each of these is now a plugin — they had nothing to do with each other except happening to live in `liveMarkdown.ts`:
 
 | Concern             | Entry point                                    | Lines |
 |---------------------|------------------------------------------------|-------|
@@ -35,7 +37,9 @@ Everything hardcoded. To disable any one: hunt. To add a new one: extend `build(
 
 ---
 
-## Proposed architecture
+## The architecture
+
+The code sketches below are the original design; where the shipped version differs (predicate fenced-lang matching, the headings memo), the migration notes at the bottom have the details.
 
 ### The core
 
@@ -110,30 +114,21 @@ export function mermaid(opts: { theme?: string } = {}): InkFabPlugin {
 ### The registry
 
 ```ts
-// src/plugins/index.ts
-import { markHiding } from './mark-hiding';
-import { headingAnchors } from './heading-anchors';
-import { toc } from './toc';
-import { tables } from './tables';
-import { tasks } from './tasks';
-import { images } from './images';
-import { horizontalRule } from './horizontal-rule';
-import { katex } from './katex';
-import { mermaid } from './mermaid';
-import { highlight } from './highlight';
-import { openaiCitations } from './openai-citations';
-
-export const plugins = [
+// src/plugins/index.ts (abridged — see the real file)
+export const plugins: InkFabPlugin[] = [
   markHiding(),
-  headingAnchors(),   // must precede toc — toc reads heading ids
+  headings(),
   toc(),
+  blockquotes(),
+  fencedCode(),
+  highlight(),
+  mermaid({ theme: 'neutral' }),
   tables(),
   tasks(),
   images(),
+  links(),
   horizontalRule(),
-  katex(),
-  mermaid({ theme: 'neutral' }),
-  highlight(),
+  math(),
   openaiCitations(),
 ];
 ```
@@ -249,18 +244,20 @@ If a plausible feature doesn't fit one of these, it's a signal to either reshape
 
 ---
 
-## Migration plan
+## Migration plan — all done
 
-One plugin per PR. Each slice stays green on `npm test`.
+1. ✅ **Scaffolding.** `types.ts`, `runtime.ts`, `index.ts`.
+2. ✅ **Pilot: `openai-citations`.** Transform-only, no rendering.
+3. ✅ **Widget plugins:** mark-hiding, headings, toc, blockquotes, fenced-code, highlight, mermaid, tables, tasks, images, links, horizontal-rule, math.
+4. ✅ **Delete the monolith.** `liveMarkdown.ts` no longer exists.
+5. ✅ **Plugin author doc.** [PLUGINS.md](./PLUGINS.md).
 
-1. **Scaffolding.** Create `types.ts`, `runtime.ts`, `index.ts` with `plugins = []`. No behavior change. Ship.
-2. **Pilot: `openaiCitations`.** Transform-only, no rendering, easiest. One test already covers it.
-3. **Widget plugins, one at a time, in this order (dependencies flow downward):**
-   mark-hiding → heading-anchors → toc → tables → tasks → images → horizontal-rule → katex → mermaid → highlight → footnotes.
-4. **Delete the monolith.** `liveMarkdown.ts` shrinks each PR. At the end, it's gone — only `plugins/*.ts` remain.
-5. **Plugin author doc.** 2-page cookbook: "Add a fenced-lang renderer," "Add a scan pass," "Add an on-save transform."
+Notes from the actual migration, where reality diverged from the sketch:
 
-No big rewrite. Every PR is reversible.
+- **Fenced-lang matching needed predicates.** highlight.js resolves aliases (`js`, `py`, …) dynamically, so `FencedLangRenderer.lang` also accepts `(lang: string) => boolean`. Exact strings always win over predicates, so Mermaid owning `mermaid` can't be shadowed by highlight's catch-all. `toWidget` receives the lang and may return `null` to decline.
+- **Cross-plugin data goes through a per-state memo, not an event bus.** Heading anchor ids and TOC entries must agree, and slug de-dup is document-wide. `lib/headings.ts` memoizes the heading collection in a `WeakMap<EditorState, Heading[]>`; both plugins read the same cached list.
+- **Plugin CSS moved into the plugin files** (the `styles` field, injected once at startup). `styles.css` keeps only core editor chrome. The height-map rule — vertical spacing must be padding, never margin — is documented at each spot it matters and in the cookbook, plus `lib/block-shell.ts` encapsulates it for bordered card widgets.
+- **The TOC click handler demonstrated the `extensions` field**: it moved from `Editor.tsx` into the toc plugin as an `EditorView.domEventHandlers` extension. The file/link click dispatch stayed in the editor shell because it needs the app's open-file callback.
 
 ### Before/after, the pilot
 
@@ -344,10 +341,8 @@ When these become real needs, the plugin shape above is already close to what yo
 
 ---
 
-## Next step
+## Next steps (when the need is real, not before)
 
-If you greenlight this:
-
-1. Scaffold `src/plugins/{types,runtime,index}.ts` with `plugins = []`. ~120 lines, no behavior change.
-2. Port `openaiCitations` as the pilot. ~50 lines, one test, one PR.
-3. If it feels right, continue through the list.
+- **Footnote rendering** beyond table cells — the markdown-it footnote plugin is loaded but only used inside `tables.ts`.
+- **Runtime-loaded user plugins** (`~/.inkfab/plugins/`) — the `InkFabPlugin` shape is already what you'd expose; the missing pieces are sandboxing and a stability promise, not a redesign.
+- **Per-plugin timing flag** in `runtime.ts` if a plugin ever feels slow.
