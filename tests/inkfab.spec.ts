@@ -1,5 +1,7 @@
 import { test, expect, _electron as electron, ElectronApplication, Page } from '@playwright/test';
 import path from 'node:path';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -326,4 +328,54 @@ test('task items show only the checkbox, no dash', async () => {
 
   await expect(page.locator('.cm-task-box')).toHaveCount(1);
   await expect(page.locator('.cm-line', { hasText: 'todo' })).toHaveText('todo');
+});
+
+test('folder sidebar lists markdown files and opens them in tabs', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'inkfab-folder-'));
+  try {
+    await mkdir(path.join(dir, 'notes'));
+    await mkdir(path.join(dir, 'node_modules'));
+    await mkdir(path.join(dir, '.git'));
+    await writeFile(path.join(dir, 'readme.md'), '# Readme\n\nroot file');
+    await writeFile(path.join(dir, 'notes', 'idea.md'), '# Idea\n\nnested file');
+    await writeFile(path.join(dir, 'picture.png'), '');
+    await writeFile(path.join(dir, 'node_modules', 'dep.md'), 'skip');
+    await writeFile(path.join(dir, '.git', 'HEAD.md'), 'skip');
+
+    // Same path File ▸ Open Folder takes once the native dialog resolves.
+    await app.evaluate(({ BrowserWindow }, d) => {
+      BrowserWindow.getAllWindows()[0]?.webContents.send('folder:opened', d);
+    }, dir);
+
+    const sidebar = page.locator('.sidebar');
+    await expect(sidebar.locator('.sidebar-header')).toHaveText(path.basename(dir));
+    // Folders first, collapsed; non-markdown, hidden and node_modules skipped.
+    await expect(sidebar.locator('.sidebar-row')).toHaveText(['›notes', 'readme']);
+
+    await sidebar.locator('.sidebar-dir', { hasText: 'notes' }).click();
+    await sidebar.locator('.sidebar-file', { hasText: 'idea' }).click();
+    await expect(page.locator('.tab.active .title')).toHaveText('idea.md');
+    await expect(page.locator('.cm-content')).toContainText('nested file');
+    await expect(sidebar.locator('.sidebar-file.active')).toHaveText('idea');
+
+    // Re-clicking an open file switches to its tab rather than duplicating it.
+    const tabCount = await page.locator('.tab').count();
+    await sidebar.locator('.sidebar-file', { hasText: 'readme' }).click();
+    await sidebar.locator('.sidebar-file', { hasText: 'idea' }).click();
+    await expect(page.locator('.tab')).toHaveCount(tabCount + 1);
+
+    // The tree follows the disk.
+    await writeFile(path.join(dir, 'later.md'), 'new');
+    await expect(sidebar.locator('.sidebar-file', { hasText: 'later' })).toBeVisible();
+
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.webContents.send('menu:close-folder');
+    });
+    await expect(sidebar.locator('.sidebar-open')).toBeVisible();
+
+    await page.locator('button[title^="Toggle sidebar"]').click();
+    await expect(page.locator('.sidebar')).toHaveCount(0);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
