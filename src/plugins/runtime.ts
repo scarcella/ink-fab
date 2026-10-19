@@ -6,7 +6,9 @@ import {
   StateEffect,
   StateField,
 } from '@codemirror/state';
-import { Decoration, DecorationSet, EditorView } from '@codemirror/view';
+import { Prec } from '@codemirror/state';
+import { Decoration, DecorationSet, EditorView, keymap } from '@codemirror/view';
+import { commandsFacet } from './lib/commands';
 import type {
   FencedLangRenderer,
   InkFabPlugin,
@@ -207,10 +209,19 @@ export function createPluginExtension(
     provide: (f) => EditorView.decorations.from(f),
   });
 
+  // Commands get their key bound here and are published for the / menu.
+  // High precedence so they win over the stock keymap (Mod-Enter etc.).
+  const commands = plugins.flatMap((p) => p.commands ?? []);
+  const bindings = commands
+    .filter((c) => c.key)
+    .map((c) => ({ key: c.key!, run: (view: EditorView) => safely(() => c.run(view)) ?? false }));
+
   return [
     focusField,
     focusTracker,
     field,
+    commandsFacet.of(commands),
+    Prec.high(keymap.of(bindings)),
     ...plugins.flatMap((p) => p.extensions ?? []),
   ];
 }

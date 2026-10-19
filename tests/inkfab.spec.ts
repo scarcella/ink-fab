@@ -330,6 +330,116 @@ test('task items show only the checkbox, no dash', async () => {
   await expect(page.locator('.cm-line', { hasText: 'todo' })).toHaveText('todo');
 });
 
+test('⌘↵ and clicking the box toggle tasks; done items are struck through', async () => {
+  const rawLines = async () => {
+    await page.locator('button[title^="Toggle raw source"]').click();
+    const text = await page.locator('.cm-content').innerText();
+    await page.locator('button[title^="Toggle raw source"]').click();
+    // innerText doubles CodeMirror's empty lines; blanks aren't what we check.
+    return text.trim().split('\n').filter(Boolean);
+  };
+
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.insertText('buy milk\n- call mum\n- [ ] ship it\n\nafter');
+
+  // Plain lines and list items become open tasks, an open task gets checked,
+  // and the blank line between stays blank (no empty "- [ ]" appears).
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Meta+Enter');
+  expect(await rawLines()).toEqual(['- [ ] buy milk', '- [ ] call mum', '- [x] ship it', '- [ ] after']);
+
+  // The done item renders struck through once the caret leaves it.
+  await page.locator('.cm-line', { hasText: 'after' }).click();
+  const done = page.locator('.cm-task-done', { hasText: 'ship it' });
+  await expect(done).toBeVisible();
+  expect(await done.evaluate((el) => getComputedStyle(el).textDecorationLine)).toBe('line-through');
+
+  // Clicking a drawn box toggles it, and ⌘↵ again reopens a done task.
+  await page.locator('.cm-line', { hasText: 'buy milk' }).locator('.cm-task-box').click();
+  expect((await rawLines())[0]).toBe('- [x] buy milk');
+  await page.locator('.cm-line', { hasText: 'buy milk' }).click();
+  await page.keyboard.press('Meta+Enter');
+  expect((await rawLines())[0]).toBe('- [ ] buy milk');
+});
+
+test('/ menu lists commands with their keys and runs the one picked', async () => {
+  const rawLines = async () => {
+    await page.locator('button[title^="Toggle raw source"]').click();
+    const text = await page.locator('.cm-content').innerText();
+    await page.locator('button[title^="Toggle raw source"]').click();
+    return text.trim().split('\n').filter(Boolean);
+  };
+  const menu = page.locator('.cm-tooltip-autocomplete');
+
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Backspace');
+
+  // A bare / shows everything, each command with its shortcut.
+  await page.keyboard.type('/');
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('li', { hasText: 'Checklist' })).toContainText('⇧⌘9');
+  await expect(menu.locator('li', { hasText: 'Heading 1' })).toContainText('⌥⌘1');
+
+  // Aliases filter it down; Enter replaces "/todo" with the command's result.
+  await page.keyboard.type('todo');
+  await expect(menu.locator('li')).toHaveCount(1);
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('milk');
+  expect(await rawLines()).toEqual(['- [ ] milk']);
+
+  // No match closes it and keeps the text; mid-word slashes never open it.
+  await page.locator('.cm-content').click(); // rawLines() left focus on its button
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type('/usr/bin and/or');
+  await expect(menu).toBeHidden();
+
+  // Esc closes it with the / left in place.
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('/h');
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await page.keyboard.type('2 x');
+  expect(await rawLines()).toEqual(['/usr/bin and/or', '/h2 x']);
+
+  // /h2 on its own line makes a heading.
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type('/h2');
+  await expect(menu.locator('li')).toHaveText([/Heading 2/]);
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Later');
+  expect(await rawLines()).toEqual(['## Later']);
+});
+
+test('⇧⌘9 turns lines into a checklist and back', async () => {
+  const rawLines = async () => {
+    await page.locator('button[title^="Toggle raw source"]').click();
+    const text = await page.locator('.cm-content').innerText();
+    await page.locator('button[title^="Toggle raw source"]').click();
+    return text.trim().split('\n').filter(Boolean);
+  };
+
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.insertText('eggs\n- bread\n- [x] jam');
+
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Meta+Shift+9');
+  expect(await rawLines()).toEqual(['- [ ] eggs', '- [ ] bread', '- [x] jam']);
+
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Meta+Shift+9');
+  expect(await rawLines()).toEqual(['eggs', 'bread', 'jam']);
+});
+
 test('⇧⌘7 / ⇧⌘8 switch list types and keep numbering continuous', async () => {
   const rawText = async () => {
     await page.locator('button[title^="Toggle raw source"]').click();

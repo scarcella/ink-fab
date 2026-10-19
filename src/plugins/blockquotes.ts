@@ -1,11 +1,13 @@
 import type { InkFabPlugin } from './types';
 import { lineClasses } from './lib/lines';
+import { toggleBlockPrefix } from './lib/commands';
 
 // Blockquote lines get a muted, italic, left-ruled treatment. The `>` marks
 // themselves are hidden by the mark-hiding plugin.
 export function blockquotes(): InkFabPlugin {
   return {
     name: 'blockquotes',
+    commands: [{ name: 'Quote', aliases: ['blockquote'], run: toggleBlockPrefix('> ') }],
     nodes: [
       {
         node: 'Blockquote',
