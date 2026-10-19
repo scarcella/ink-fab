@@ -191,12 +191,14 @@ function toggleList(kind: Kind) {
 export function listToggle(): InkFabPlugin {
   return {
     name: 'list-toggle',
+    commands: [
+      { name: 'Numbered list', key: 'Mod-Shift-7', aliases: ['ordered', 'ol'], run: toggleList('ordered') },
+      { name: 'Bulleted list', key: 'Mod-Shift-8', aliases: ['bullet', 'ul'], run: toggleList('bullet') },
+    ],
     extensions: [
       // High precedence so Tab reaches us before the editor's indentWithTab.
       Prec.high(
         keymap.of([
-          { key: 'Mod-Shift-7', run: toggleList('ordered') },
-          { key: 'Mod-Shift-8', run: toggleList('bullet') },
           { key: 'Tab', run: shiftItem('in') },
           { key: 'Shift-Tab', run: shiftItem('out') },
         ])

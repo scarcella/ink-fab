@@ -15,6 +15,7 @@ import { links } from './links';
 import { horizontalRule } from './horizontal-rule';
 import { math } from './math';
 import { openaiCitations } from './openai-citations';
+import { slashMenu } from './slash-menu';
 
 // The single source of truth for what InkFab renders. Add a plugin: add a
 // file, add a line. Disable one: comment its line out.
@@ -42,6 +43,7 @@ export const plugins: InkFabPlugin[] = [
   horizontalRule(),
   math(),
   openaiCitations(),
+  slashMenu(),
 ];
 
 export type { InkFabPlugin } from './types';

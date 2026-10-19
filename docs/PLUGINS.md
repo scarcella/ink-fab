@@ -65,6 +65,7 @@ export interface InkFabPlugin {
   readonly nodes?: NodeRenderer[];    // decorate markdown syntax-tree nodes
   readonly scans?: ScanRenderer[];    // decorate regex matches in the raw text
   readonly fencedLangs?: FencedLangRenderer[]; // replace ```lang blocks with widgets
+  readonly commands?: Command[];      // actions with a key, listed in the / menu
   readonly onOpen?: Transform;        // rewrite file content when a file opens
   readonly onSave?: Transform;        // rewrite file content before it's written
 }
@@ -179,38 +180,49 @@ opens dirty so the user knows a save will rewrite it). `onSave` runs on the
 text just before it hits disk. Both are pure `(content, filePath) => content`
 functions — trivially unit-testable. `openai-citations.ts` is a real example.
 
-### Add a keymap, click handler, or any CodeMirror extension
+### Add a command (a key, and an entry in the / menu)
 
-The `extensions` field passes anything through to CodeMirror. The toc plugin
-uses it for scroll-to-heading clicks; a bold-toggle keymap looks like:
+A command is something the user does: make a heading, tick a task. Declare
+it in `commands` and the runtime binds its key and lists it in the `/` menu
+with that key shown beside it, which is how people learn the shortcut.
 
 ```ts
-import { keymap } from '@codemirror/view';
-
-export function boldKey(): InkFabPlugin {
+export function bold(): InkFabPlugin {
   return {
-    name: 'bold-key',
-    extensions: [
-      keymap.of([
-        {
-          key: 'Mod-b',
-          run: (view) => {
-            const { from, to } = view.state.selection.main;
-            if (from === to) return false;
-            view.dispatch({
-              changes: [
-                { from, insert: '**' },
-                { from: to, insert: '**' },
-              ],
-            });
-            return true;
-          },
+    name: 'bold',
+    commands: [
+      {
+        name: 'Bold',              // what the / menu shows
+        key: 'Mod-b',              // optional; omit for menu-only commands
+        aliases: ['strong'],       // optional extra words /-filtering matches
+        run: (view) => {
+          const { from, to } = view.state.selection.main;
+          if (from === to) return false;
+          view.dispatch({
+            changes: [
+              { from, insert: '**' },
+              { from: to, insert: '**' },
+            ],
+          });
+          return true;
         },
-      ]),
+      },
     ],
   };
 }
 ```
+
+When chosen from the menu, the typed `/query` is deleted first, then `run`
+is called, so commands that act on "the current line" just work.
+`lib/commands.ts` has helpers for line commands: `selectedLines` and
+`toggleBlockPrefix('> ')` (that one is the whole Quote command).
+
+### Add a keymap, click handler, or any CodeMirror extension
+
+The `extensions` field passes anything through to CodeMirror. Use it for
+behaviour that isn't a named action: the toc plugin uses it for
+scroll-to-heading clicks, the tasks plugin for clicking a checkbox, and
+list-toggle for Tab / Shift-Tab, which only act on list items.
 
 ### Share data between plugins
 

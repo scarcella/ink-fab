@@ -1,5 +1,5 @@
 import type { EditorState, Extension, Range } from '@codemirror/state';
-import type { Decoration, WidgetType } from '@codemirror/view';
+import type { Decoration, EditorView, WidgetType } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 
 export interface PluginContext {
@@ -26,6 +26,16 @@ export interface FencedLangRenderer {
   toWidget: (body: string, lang: string, ctx: PluginContext) => WidgetType | null;
 }
 
+/** An action a plugin offers: bound to `key` and listed in the / menu. */
+export interface Command {
+  name: string;
+  /** CodeMirror key name, e.g. 'Mod-Shift-9'. */
+  key?: string;
+  /** Extra words the / menu matches, e.g. ['todo'] for "Checklist". */
+  aliases?: string[];
+  run: (view: EditorView) => boolean;
+}
+
 export type Transform = (content: string, filePath: string) => string;
 
 export interface InkFabPlugin {
@@ -35,6 +45,7 @@ export interface InkFabPlugin {
   readonly nodes?: NodeRenderer[];
   readonly scans?: ScanRenderer[];
   readonly fencedLangs?: FencedLangRenderer[];
+  readonly commands?: Command[];
   readonly onOpen?: Transform;
   readonly onSave?: Transform;
 }

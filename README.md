@@ -17,21 +17,22 @@ Every feature is a standalone file under `src/plugins/`, registered in `src/plug
 | Plugin | File | Extension points |
 |---|---|---|
 | `mark-hiding` | `src/plugins/mark-hiding.ts` | `nodes` |
-| `headings` | `src/plugins/headings.ts` | `nodes`, `styles` |
+| `headings` | `src/plugins/headings.ts` | `nodes`, `commands` (⌥⌘1–3), `styles` |
 | `toc` | `src/plugins/toc.ts` | `scans`, `extensions`, `styles` |
-| `blockquotes` | `src/plugins/blockquotes.ts` | `nodes`, `styles` |
-| `fenced-code` | `src/plugins/fenced-code.ts` | `nodes`, `styles` |
+| `blockquotes` | `src/plugins/blockquotes.ts` | `nodes`, `commands`, `styles` |
+| `fenced-code` | `src/plugins/fenced-code.ts` | `nodes`, `commands`, `styles` |
 | `highlight` | `src/plugins/highlight.ts` | `fencedLangs`, `styles` |
 | `mermaid` | `src/plugins/mermaid.ts` | `fencedLangs`, `styles` |
 | `tables` | `src/plugins/tables.ts` | `nodes`, `styles` |
-| `tasks` | `src/plugins/tasks.ts` | `nodes`, `styles` |
+| `tasks` | `src/plugins/tasks.ts` | `nodes`, `commands` (⇧⌘9 checklist, ⌘↵ tick), `extensions`, `styles` |
 | `lists` | `src/plugins/lists.ts` | `nodes`, `styles` |
-| `list-toggle` | `src/plugins/list-toggle.ts` | `extensions` (⇧⌘7 numbered, ⇧⌘8 bullets, structure-aware Tab / ⇧Tab) |
+| `list-toggle` | `src/plugins/list-toggle.ts` | `commands` (⇧⌘7 numbered, ⇧⌘8 bullets), `extensions` (structure-aware Tab / ⇧Tab) |
 | `images` | `src/plugins/images.ts` | `nodes`, `styles` |
 | `links` | `src/plugins/links.ts` | `nodes`, `styles` |
-| `horizontal-rule` | `src/plugins/horizontal-rule.ts` | `nodes`, `styles` |
+| `horizontal-rule` | `src/plugins/horizontal-rule.ts` | `nodes`, `commands`, `styles` |
 | `math` | `src/plugins/math.ts` | `scans`, `styles` |
 | `openai-citations` | `src/plugins/openai-citations.ts` | `onOpen` |
+| `slash-menu` | `src/plugins/slash-menu.ts` | `extensions` — `/` opens every plugin's `commands`, with their keys |
 
 ### Roadmap
 

@@ -2,6 +2,7 @@ import { Decoration } from '@codemirror/view';
 import type { InkFabPlugin, NodeRenderer } from './types';
 import { headingIdAt } from './lib/headings';
 import { lineClasses } from './lib/lines';
+import { toggleBlockPrefix } from './lib/commands';
 
 // Heading typography + GitHub-style anchor ids (`## What you can write` →
 // id="what-you-can-write"), which the toc plugin and in-document links target.
@@ -36,6 +37,12 @@ const setext = (level: 1 | 2): NodeRenderer => ({
 export function headings(): InkFabPlugin {
   return {
     name: 'headings',
+    commands: [1, 2, 3].map((level) => ({
+      name: `Heading ${level}`,
+      key: `Mod-Alt-${level}`,
+      aliases: [`h${level}`, 'title'],
+      run: toggleBlockPrefix('#'.repeat(level) + ' '),
+    })),
     nodes: [atx(1), atx(2), atx(3), atx(4), atx(5), atx(6), setext(1), setext(2)],
     // Vertical rhythm must be padding, not margin — CodeMirror's height map
     // measures lines without margins, which breaks click/arrow positioning.
