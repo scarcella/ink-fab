@@ -412,7 +412,7 @@ test('/ menu lists commands with their keys and runs the one picked', async () =
   await page.keyboard.press('Backspace');
   await page.keyboard.type('/h2');
   await expect(menu.locator('li')).toHaveText([/Heading 2/]);
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter'); // straight away: no swallowed Enter
   await page.keyboard.type('Later');
   expect(await rawLines()).toEqual(['## Later']);
 });

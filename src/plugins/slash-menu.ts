@@ -90,6 +90,17 @@ const menuTheme = EditorView.theme({
 export function slashMenu(): InkFabPlugin {
   return {
     name: 'slash-menu',
-    extensions: [autocompletion({ override: [slashSource], icons: false }), menuTheme],
+    extensions: [
+      autocompletion({
+        override: [slashSource],
+        icons: false,
+        // The source is synchronous and only filters, so there's nothing to
+        // debounce or guard against: a quick "/h2⏎" should make a heading,
+        // not a newline (the defaults swallow Enter for 75ms after updates).
+        activateOnTypingDelay: 0,
+        interactionDelay: 0,
+      }),
+      menuTheme,
+    ],
   };
 }
