@@ -91,7 +91,7 @@ export function lists(): InkFabPlugin {
     ],
     styles: `
 .cm-list-bullet {
-  color: var(--accent);
+  color: var(--fg);
 }
 ${indentStyles}
 `,
