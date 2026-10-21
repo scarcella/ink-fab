@@ -50,6 +50,14 @@ function toggleChecklist(view: EditorView) {
   return true;
 }
 
+// A done task is a hand-written tick, not a box: one stroke with a short down-stroke
+// and a long, slightly bowed up-stroke that overshoots the text height a
+// little, like a tick written in a margin.
+const TICK_SVG =
+  '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+  'stroke-linecap="round" stroke-linejoin="round"><path d="M2.4 11.2 C3.2 10.9 4.4 11.6 5.4 13.2 ' +
+  'L6.6 15.6 C8.2 11.6 11.4 6.4 15.2 3.2 C16.2 2.4 17.2 1.8 18.2 1.5"/></svg>';
+
 class TaskCheckboxWidget extends WidgetType {
   constructor(readonly checked: boolean) {
     super();
@@ -61,6 +69,7 @@ class TaskCheckboxWidget extends WidgetType {
     const el = document.createElement('span');
     el.className = 'cm-task-box' + (this.checked ? ' checked' : '');
     el.setAttribute('aria-hidden', 'true');
+    if (this.checked) el.innerHTML = TICK_SVG;
     return el;
   }
   ignoreEvent() {
@@ -114,7 +123,7 @@ export function tasks(): InkFabPlugin {
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 1.5px solid var(--fg-muted);
+  border: 1.5px solid var(--fg);
   border-radius: 3px;
   margin-right: 6px;
   position: relative;
@@ -122,25 +131,24 @@ export function tasks(): InkFabPlugin {
   background: transparent;
   cursor: pointer;
 }
+/* Done: no box, just a charcoal tick in the same footprint. */
 .cm-task-box.checked {
-  background: var(--accent);
-  border-color: var(--accent);
+  border-color: transparent;
+  color: var(--fg);
+  overflow: visible;
 }
-.cm-task-box.checked::after {
-  content: "";
+.cm-task-box.checked svg {
   position: absolute;
-  left: 3.5px;
-  top: 0.5px;
-  width: 4px;
-  height: 8px;
-  border-right: 2px solid var(--accent-contrast);
-  border-bottom: 2px solid var(--accent-contrast);
-  transform: rotate(45deg);
+  left: -2px;
+  top: -6px;
+  width: 21px;
+  height: 21px;
+  transform: rotate(-4deg);
 }
 .cm-task-done,
 .cm-task-done * {
-  text-decoration: line-through;
-  color: var(--fg-muted);
+  color: var(--fg-faint);
+  text-decoration: line-through 1px var(--fg-faint);
 }
 `,
   };
