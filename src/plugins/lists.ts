@@ -70,11 +70,12 @@ export function lists(): InkFabPlugin {
         render: (node, ctx) => {
           if (node.parent?.parent?.name !== 'BulletList') return null;
 
-          // Task item: hide the dash (and its trailing space) when the caret
-          // is off the line — same reveal rule the checkbox itself uses.
-          if (node.nextSibling?.name === 'Task') {
-            const line = ctx.state.doc.lineAt(node.from);
-            if (ctx.touches(line.from, line.to)) return null;
+          // Task item: hide the dash (and its trailing space) unless the
+          // caret is on the `- [ ]` marker — same reveal rule as the box.
+          const task = node.nextSibling;
+          if (task?.name === 'Task') {
+            const box = task.firstChild?.name === 'TaskMarker' ? task.firstChild : null;
+            if (ctx.touches(node.from, box ? box.to : node.to)) return null;
             const trailingSpace =
               ctx.state.doc.sliceString(node.to, node.to + 1) === ' ' ? 1 : 0;
             return [Decoration.replace({}).range(node.from, node.to + trailingSpace)];

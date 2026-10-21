@@ -3,7 +3,7 @@ import type { ChangeSpec, Line } from '@codemirror/state';
 import type { InkFabPlugin } from './types';
 import { dispatchLineChanges, selectedLines } from './lib/commands';
 
-// `- [ ]` / `- [x]` render as drawn checkboxes when the caret is off the line,
+// `- [ ]` / `- [x]` render as drawn checkboxes unless the caret is on the marker,
 // and a done item's text is struck through. The file stays plain GFM.
 //
 // Checklist (⇧⌘9, Google Docs' key) turns the selected lines into tasks, or
@@ -106,12 +106,21 @@ export function tasks(): InkFabPlugin {
           if (checked && task && task.to > node.to + 1) {
             out.push(Decoration.mark({ class: 'cm-task-done' }).range(node.to + 1, task.to));
           }
-          const line = ctx.state.doc.lineAt(node.from);
-          if (!ctx.touches(line.from, line.to)) {
+          // Raw `- [ ]` only while the caret is on the marker itself, like
+          // bullets, so clicking into the text keeps the box. The space after
+          // the box is hidden with it, so a caret at the start of the text
+          // sits just past the marker rather than on it — except on an empty
+          // task, where hiding it would leave no visible spot for the caret
+          // and the browser would put it back before the box.
+          const markFrom = node.parent?.prevSibling?.name === 'ListMark' ? node.parent.prevSibling.from : node.from;
+          if (!ctx.touches(markFrom, node.to)) {
+            const line = ctx.state.doc.lineAt(node.from);
+            const space =
+              ctx.state.doc.sliceString(node.to, node.to + 1) === ' ' && node.to + 1 < line.to ? 1 : 0;
             out.push(
               Decoration.replace({
                 widget: new TaskCheckboxWidget(checked),
-              }).range(node.from, node.to)
+              }).range(node.from, node.to + space)
             );
           }
           return out;
@@ -125,7 +134,7 @@ export function tasks(): InkFabPlugin {
   height: 14px;
   border: 1.5px solid var(--fg);
   border-radius: 3px;
-  margin-right: 6px;
+  margin-right: calc(6px + 0.25em); /* stands in for the hidden space */
   position: relative;
   top: 2px;
   background: transparent;
