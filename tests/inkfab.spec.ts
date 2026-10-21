@@ -323,11 +323,31 @@ test('bullet markers render as real bullets, cycling with depth', async () => {
 test('task items show only the checkbox, no dash', async () => {
   await page.locator('.cm-content').click();
   await page.keyboard.press('Meta+A');
-  // The double Enter clears the auto-continued "- [ ] " marker line.
-  await page.keyboard.type('- [ ] todo\n\nafter');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.insertText('- [ ] todo\n\nafter');
 
   await expect(page.locator('.cm-task-box')).toHaveCount(1);
   await expect(page.locator('.cm-line', { hasText: 'todo' })).toHaveText('todo');
+});
+
+test('editing a task\'s text keeps the box; only the marker reveals raw source', async () => {
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.insertText('- [ ] water the plants\n- [x] done thing');
+
+  // Clicking into the text (and typing there) leaves the box drawn.
+  const line = page.locator('.cm-line', { hasText: 'water the plants' });
+  await line.locator('text=plants').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('!');
+  await expect(line.locator('.cm-task-box')).toHaveCount(1);
+  await expect(line).toHaveText('water the plants!');
+
+  // Home goes onto the marker, which shows the raw `- [ ]` for editing.
+  await page.keyboard.press('Home');
+  await expect(line.locator('.cm-task-box')).toHaveCount(0);
+  await expect(line).toContainText('- [ ] water');
 });
 
 test('⌘↵ and clicking the box toggle tasks; done items are struck through', async () => {
