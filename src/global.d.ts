@@ -23,6 +23,7 @@ declare global {
         baseFilePath: string,
         target: string
       ) => { filePath: string; fileUrl: string } | null;
+      initialFolder: { folder: string | null; fromSession: boolean };
       pickFolder: () => Promise<void>;
       listFolder: (dir: string) => Promise<FolderEntry[] | null>;
       closeFolder: () => void;

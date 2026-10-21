@@ -4,6 +4,8 @@ A quiet local markdown editor with live rendering (GitHub-Flavored Markdown dial
 
 Three color themes — **paper** (default, warm old-paper), **light**, and **dark** — switchable from the titlebar button or View ▸ Theme, remembered across launches. A theme is just a CSS-variable block in `src/styles.css`; every plugin styles itself off those variables.
 
+Each window has its own folder sidebar and document tabs. **⌘T** opens a folder as a new native macOS tab, **⇧⌘N** a new window; tabs drag out into windows and back, and every window reopens with its folder on relaunch.
+
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the design — minimal core, plugin everything — and [`docs/PLUGINS.md`](docs/PLUGINS.md) for the plugin-author cookbook (your first plugin is ~20 lines).
 
 ---

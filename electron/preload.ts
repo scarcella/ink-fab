@@ -62,6 +62,13 @@ contextBridge.exposeInMainWorld('inkfab', {
   openExternal: (url: string) => ipcRenderer.invoke('app:open-external', url) as Promise<void>,
   openPath: (filePath: string) => ipcRenderer.invoke('app:open-path', filePath) as Promise<string>,
   resolveFileTarget,
+  // The folder this window opens with: a restored or newly tabbed window's
+  // own, or null. `fromSession` is false only for the first window of a
+  // launch with nothing saved, which falls back to the last folder used.
+  initialFolder: ipcRenderer.sendSync('window:initial-folder') as {
+    folder: string | null;
+    fromSession: boolean;
+  },
   pickFolder: () => ipcRenderer.invoke('folder:pick') as Promise<void>,
   listFolder: (dir: string) =>
     ipcRenderer.invoke('folder:list', dir) as Promise<FolderEntry[] | null>,
