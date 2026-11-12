@@ -247,6 +247,42 @@ html, body, #root {
   display: flex;
 }
 
+/* Split view: one or two panes side by side. */
+.panes {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  position: relative;
+}
+.pane {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+}
+.pane + .pane { border-left: 1px solid var(--border-soft); }
+.pane-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2em;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--fg-faint);
+}
+.tab.shown { color: var(--fg); } /* showing in the other half */
+
+/* While a tab is dragged: drop on either half to open it there. */
+.drop-zones {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  z-index: 10;
+}
+.drop-zone { flex: 1; transition: background 0.12s ease; }
+.drop-zone.over { background: color-mix(in srgb, var(--fg) 6%, transparent); }
+
 .editor-host {
   flex: 1;
   min-width: 0;

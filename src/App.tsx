@@ -115,7 +115,14 @@ const tabName = (tab: TabState) =>
 
 export default function App() {
   const [tabs, setTabs] = useState<TabState[]>([initialTab]);
-  const [activeId, setActiveId] = useState(initialTab.id);
+  // Split view: one or two panes, each showing a tab (null = an empty half
+  // waiting for a file). The focused pane's tab is the "active" one that
+  // saving, the sidebar and ⌘O act on.
+  const [panes, setPanes] = useState<(number | null)[]>([initialTab.id]);
+  const [focusedPane, setFocusedPane] = useState(0);
+  const [draggingTab, setDraggingTab] = useState<number | null>(null);
+  const [dropSide, setDropSide] = useState<number | null>(null);
+  const activeId = panes[focusedPane] ?? null;
   const [rawMode, setRawMode] = useState(false);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [folder, setFolder] = useState<string | null>(initialFolder);
@@ -123,11 +130,15 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(() => folder !== null);
 
   const tabsRef = useRef(tabs);
+  const panesRef = useRef(panes);
+  const focusedRef = useRef(focusedPane);
   const activeIdRef = useRef(activeId);
   tabsRef.current = tabs;
+  panesRef.current = panes;
+  focusedRef.current = focusedPane;
   activeIdRef.current = activeId;
 
-  const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
+  const active = tabs.find((t) => t.id === activeId) ?? null;
 
   // Ref is updated eagerly so sequential async flows (save-all, close) see
   // their own writes before React re-renders.
@@ -135,6 +146,64 @@ export default function App() {
     tabsRef.current = next;
     setTabs(next);
   }, []);
+
+  const setPanesNow = useCallback((next: (number | null)[], focus = focusedRef.current) => {
+    const f = Math.min(focus, next.length - 1);
+    panesRef.current = next;
+    focusedRef.current = f;
+    activeIdRef.current = next[f] ?? null;
+    setPanes(next);
+    setFocusedPane(f);
+  }, []);
+
+  // Shows a tab in the focused pane. A tab already showing in the other pane
+  // is focused there instead, so a document is never open in both halves.
+  const showTab = useCallback(
+    (id: number) => {
+      const current = panesRef.current;
+      const at = current.indexOf(id);
+      if (at !== -1) setPanesNow(current, at);
+      else setPanesNow(current.map((p, i) => (i === focusedRef.current ? id : p)));
+    },
+    [setPanesNow]
+  );
+
+  const toggleSplit = useCallback(() => {
+    const current = panesRef.current;
+    if (current.length === 1) {
+      setPanesNow([current[0], null], 1); // the new half waits for a file
+      return;
+    }
+    // Unsplit keeps the focused half's document (or the other, if it's empty).
+    const keep = current[focusedRef.current] ?? current[1 - focusedRef.current];
+    setPanesNow([keep], 0);
+  }, [setPanesNow]);
+
+  // A tab dropped on the left (0) or right (1) half of the editor area.
+  const dropTab = useCallback(
+    (id: number, side: number) => {
+      const current = panesRef.current;
+      if (current.length === 2) {
+        const next = [...current];
+        const from = next.indexOf(id);
+        if (from !== -1 && from !== side) next[from] = next[side]; // swap halves
+        next[side] = id;
+        setPanesNow(next, side);
+        return;
+      }
+      // Splitting: the dropped tab takes its half, the current one the other.
+      // Dragging the tab that's already showing leaves the other half for its
+      // neighbour, or empty when there isn't one.
+      let other = current[0];
+      if (other === id) {
+        const all = tabsRef.current;
+        const idx = all.findIndex((t) => t.id === id);
+        other = (all[idx + 1] ?? all[idx - 1])?.id ?? null;
+      }
+      setPanesNow(side === 1 ? [other, id] : [id, other], side);
+    },
+    [setPanesNow]
+  );
 
   const updateTab = useCallback(
     (id: number, patch: Partial<TabState>) => {
@@ -189,16 +258,10 @@ export default function App() {
     window.inkfab.setDirty(tabs.some((t) => t.dirty));
   }, [tabs]);
 
+  const activeFilePath = active?.filePath ?? null;
   useEffect(() => {
-    window.inkfab.setCurrentFile(active.filePath);
-  }, [active.filePath]);
-
-  const onEditorChange = useCallback(
-    (v: string) => {
-      updateTab(activeIdRef.current, { source: v, dirty: true });
-    },
-    [updateTab]
-  );
+    window.inkfab.setCurrentFile(activeFilePath);
+  }, [activeFilePath]);
 
   const saveTab = useCallback(
     async (id: number, forceDialog = false) => {
@@ -215,29 +278,32 @@ export default function App() {
   );
 
   const handleSave = useCallback(
-    (forceDialog = false) => saveTab(activeIdRef.current, forceDialog),
+    async (forceDialog = false) => {
+      const id = activeIdRef.current;
+      return id === null ? false : saveTab(id, forceDialog);
+    },
     [saveTab]
   );
 
   const handleNew = useCallback(() => {
     const tab = makeTab();
     setTabsNow([...tabsRef.current, tab]);
-    setActiveId(tab.id);
-  }, [setTabsNow]);
+    showTab(tab.id);
+  }, [setTabsNow, showTab]);
 
   const openInTab = useCallback(
     (filePath: string, content: string) => {
       const existing = tabsRef.current.find((t) => t.filePath === filePath);
       if (existing) {
-        setActiveId(existing.id);
+        showTab(existing.id);
         return;
       }
       const cleaned = applyOpenTransforms(content, filePath, plugins);
       const tab = makeTab({ filePath, source: cleaned, dirty: cleaned !== content });
       setTabsNow([...tabsRef.current, tab]);
-      setActiveId(tab.id);
+      showTab(tab.id);
     },
-    [setTabsNow]
+    [setTabsNow, showTab]
   );
 
   const handleOpen = useCallback(async () => {
@@ -250,13 +316,13 @@ export default function App() {
     async (nextFilePath: string) => {
       const existing = tabsRef.current.find((t) => t.filePath === nextFilePath);
       if (existing) {
-        setActiveId(existing.id);
+        showTab(existing.id);
         return;
       }
       const content = await window.inkfab.readFile(nextFilePath);
       openInTab(nextFilePath, content);
     },
-    [openInTab]
+    [openInTab, showTab]
   );
 
   const closeTab = useCallback(
@@ -272,12 +338,31 @@ export default function App() {
       const remaining = tabsRef.current.filter((t) => t.id !== id);
       const next = remaining.length ? remaining : [makeTab()];
       setTabsNow(next);
-      if (activeIdRef.current === id) {
-        setActiveId(next[Math.min(Math.max(idx, 0), next.length - 1)].id);
+
+      // A pane showing the closed tab moves to the nearest tab not already
+      // in the other pane; in a split with none left, that half closes.
+      const current = panesRef.current;
+      const at = current.indexOf(id);
+      if (at === -1) return;
+      const free = next
+        .map((t, i) => ({ id: t.id, dist: Math.abs(i - idx) }))
+        .filter((t) => !current.includes(t.id))
+        .sort((a, b) => a.dist - b.dist);
+      if (free.length) {
+        setPanesNow(current.map((p, i) => (i === at ? free[0].id : p)));
+      } else {
+        setPanesNow(current.filter((_, i) => i !== at), 0);
       }
     },
-    [saveTab, setTabsNow]
+    [saveTab, setTabsNow, setPanesNow]
   );
+
+  // ⌘W: close the focused tab; on an empty half, close the split instead.
+  const closeFocused = useCallback(() => {
+    const id = activeIdRef.current;
+    if (id !== null) void closeTab(id);
+    else if (panesRef.current.length === 2) toggleSplit();
+  }, [closeTab, toggleSplit]);
 
   const saveAllAndClose = useCallback(async () => {
     let ok = true;
@@ -297,13 +382,14 @@ export default function App() {
       else if (action === 'open') void handleOpen();
       else if (action === 'save') void handleSave(false);
       else if (action === 'save-as') void handleSave(true);
-      else if (action === 'close-tab') void closeTab(activeIdRef.current);
+      else if (action === 'close-tab') closeFocused();
       else if (action === 'save-and-close') void saveAllAndClose();
       else if (action === 'toggle-preview') setRawMode((v) => !v);
       else if (action === 'toggle-sidebar') setSidebarOpen((v) => !v);
       else if (action === 'close-folder') setFolder(null);
+      else if (action === 'toggle-split') toggleSplit();
     });
-  }, [handleNew, handleOpen, handleSave, closeTab, saveAllAndClose]);
+  }, [handleNew, handleOpen, handleSave, closeFocused, saveAllAndClose, toggleSplit]);
 
   return (
     <div className={`app ${rawMode ? 'raw' : ''}`}>
@@ -317,8 +403,18 @@ export default function App() {
             {tabs.map((t) => (
               <div
                 key={t.id}
-                className={`tab ${t.id === activeId ? 'active' : ''}`}
-                onClick={() => setActiveId(t.id)}
+                className={`tab ${t.id === activeId ? 'active' : panes.includes(t.id) ? 'shown' : ''}`}
+                onClick={() => showTab(t.id)}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/x-inkfab-tab', String(t.id));
+                  e.dataTransfer.effectAllowed = 'move';
+                  setDraggingTab(t.id);
+                }}
+                onDragEnd={() => {
+                  setDraggingTab(null);
+                  setDropSide(null);
+                }}
               >
                 <span className="title">{tabName(t)}</span>
                 {t.dirty && <span className="dot" title="Unsaved" />}
@@ -361,6 +457,13 @@ export default function App() {
             files
           </button>
           <button
+            className={`mode-btn ${panes.length > 1 ? 'active' : ''}`}
+            onClick={toggleSplit}
+            title="Split editor (⌥⌘\) — or drag a tab onto the editor"
+          >
+            split
+          </button>
+          <button
             className={`mode-btn ${rawMode ? 'active' : ''}`}
             onClick={() => setRawMode((v) => !v)}
             title="Toggle raw source (⌘/)"
@@ -375,19 +478,64 @@ export default function App() {
             key={folder ?? ''}
             folder={folder}
             tree={tree}
-            activePath={active.filePath}
+            activePath={activeFilePath}
             onOpenFile={(p) => void handleOpenLinkedFile(p)}
           />
         )}
-        <Editor
-          key={active.id}
-          value={active.source}
-          filePath={active.filePath}
-          rawMode={rawMode}
-          theme={theme}
-          onChange={onEditorChange}
-          onOpenFile={handleOpenLinkedFile}
-        />
+        <div className={`panes ${panes.length > 1 ? 'split' : ''}`}>
+          {panes.map((id, i) => {
+            const tab = tabs.find((t) => t.id === id);
+            return (
+              <section
+                key={i}
+                className={`pane ${i === focusedPane ? 'focused' : ''}`}
+                onMouseDownCapture={() => {
+                  if (focusedRef.current !== i) setPanesNow(panesRef.current, i);
+                }}
+              >
+                {tab ? (
+                  <Editor
+                    key={tab.id}
+                    value={tab.source}
+                    filePath={tab.filePath}
+                    rawMode={rawMode}
+                    theme={theme}
+                    onChange={(v) => updateTab(tab.id, { source: v, dirty: true })}
+                    onOpenFile={handleOpenLinkedFile}
+                  />
+                ) : (
+                  <div className="pane-empty">
+                    Open a file from the sidebar or with ⌘O, or drag a tab here.
+                  </div>
+                )}
+              </section>
+            );
+          })}
+          {draggingTab !== null && (
+            // Drop targets for a dragged tab: the left and right halves.
+            <div className="drop-zones">
+              {[0, 1].map((side) => (
+                <div
+                  key={side}
+                  className={`drop-zone ${dropSide === side ? 'over' : ''}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dropSide !== side) setDropSide(side);
+                  }}
+                  onDragLeave={() => setDropSide((s) => (s === side ? null : s))}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const id = Number(e.dataTransfer.getData('application/x-inkfab-tab'));
+                    setDraggingTab(null);
+                    setDropSide(null);
+                    if (id) dropTab(id, side);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
