@@ -578,3 +578,69 @@ test('folder sidebar lists markdown files and opens them in tabs', async () => {
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('split, then open a document into the empty half', async () => {
+  const splitBtn = page.locator('button[title^="Split editor"]');
+  const panes = page.locator('.pane');
+
+  await page.locator('.pane .cm-content').click();
+  await page.keyboard.press('Meta+A');
+  await page.keyboard.insertText('left document');
+
+  await splitBtn.click();
+  await expect(panes).toHaveCount(2);
+  await expect(panes.nth(1).locator('.pane-empty')).toBeVisible();
+
+  // A new document lands in the empty (focused) half; the left is untouched.
+  await page.locator('.tab-add').click();
+  await expect(page.locator('.pane-empty')).toHaveCount(0);
+  await panes.nth(1).locator('.cm-content').click();
+  await page.keyboard.insertText('right document');
+  await expect(panes.nth(0)).toContainText('left document');
+  await expect(panes.nth(0)).not.toContainText('right document');
+
+  // Picking the tab that's showing on the left focuses that half rather
+  // than opening the document twice.
+  await page.locator('.tab.shown').click();
+  await expect(page.locator('.cm-editor')).toHaveCount(2);
+  await expect(page.locator('.tab.active')).toHaveCount(1);
+  await expect(page.locator('.tab.shown')).toHaveCount(1);
+
+  // Unsplitting keeps the focused half's document.
+  await splitBtn.click();
+  await expect(panes).toHaveCount(1);
+  await expect(panes.first()).toContainText('left document');
+});
+
+test('dragging a tab onto the right half opens it beside the current one', async () => {
+  const panes = page.locator('.pane');
+  await expect(panes).toHaveCount(1);
+
+  // Two documents with known text: the one showing, and the one we drag.
+  await page.locator('.tab-add').click();
+  await page.locator('.pane .cm-content').click();
+  await page.keyboard.insertText('dragged document');
+  await page.locator('.tab-add').click();
+  await page.locator('.pane .cm-content').click();
+  await page.keyboard.insertText('staying document');
+
+  // The dragged document's tab is second to last, the showing one last.
+  const area = (await page.locator('.panes').boundingBox())!;
+  await page.locator('.tab').nth(-2).dragTo(page.locator('.panes'), {
+    targetPosition: { x: area.width * 0.8, y: area.height / 2 },
+  });
+
+  await expect(panes).toHaveCount(2);
+  await expect(panes.nth(0)).toContainText('staying document');
+  await expect(panes.nth(1)).toContainText('dragged document');
+
+  // ⌘W on an empty half closes the split.
+  const splitBtn = page.locator('button[title^="Split editor"]');
+  await splitBtn.click(); // unsplit
+  await splitBtn.click(); // split again: an empty right half, focused
+  await expect(page.locator('.pane-empty')).toBeVisible();
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send('menu:close-tab');
+  });
+  await expect(panes).toHaveCount(1);
+});

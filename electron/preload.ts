@@ -97,6 +97,7 @@ contextBridge.exposeInMainWorld('inkfab', {
         | 'save-and-close'
         | 'toggle-sidebar'
         | 'close-folder'
+        | 'toggle-split'
     ) => void
   ) => {
     const map = {
@@ -109,6 +110,7 @@ contextBridge.exposeInMainWorld('inkfab', {
       'menu:save-and-close': 'save-and-close',
       'menu:toggle-sidebar': 'toggle-sidebar',
       'menu:close-folder': 'close-folder',
+      'menu:toggle-split': 'toggle-split',
     } as const;
     const listeners: Array<[string, () => void]> = [];
     for (const [channel, action] of Object.entries(map)) {

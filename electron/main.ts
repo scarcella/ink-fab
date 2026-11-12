@@ -549,6 +549,11 @@ function buildMenu() {
           click: () => sendToTarget('menu:toggle-sidebar'),
         },
         {
+          label: 'Split Editor',
+          accelerator: 'Alt+CmdOrCtrl+\\',
+          click: () => sendToTarget('menu:toggle-split'),
+        },
+        {
           label: 'Toggle Preview',
           accelerator: 'CmdOrCtrl+/',
           click: () => sendToTarget('menu:toggle-preview'),
