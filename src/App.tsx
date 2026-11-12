@@ -84,6 +84,14 @@ const writeStored = (key: string, value: string | null) => {
   } catch {}
 };
 
+// Each window has its own folder, which main remembers per window across
+// launches. Only a launch with no saved windows falls back to the folder last
+// opened anywhere, so the first window still reopens where you left off.
+const initialFolder = () => {
+  const { folder, fromSession } = window.inkfab.initialFolder;
+  return fromSession ? folder : readStored('inkfab:folder');
+};
+
 type TabState = {
   id: number;
   filePath: string | null;
@@ -110,9 +118,9 @@ export default function App() {
   const [activeId, setActiveId] = useState(initialTab.id);
   const [rawMode, setRawMode] = useState(false);
   const [theme, setTheme] = useState<Theme>(loadTheme);
-  const [folder, setFolder] = useState<string | null>(() => readStored('inkfab:folder'));
+  const [folder, setFolder] = useState<string | null>(initialFolder);
   const [tree, setTree] = useState<FolderEntry[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(() => readStored('inkfab:folder') !== null);
+  const [sidebarOpen, setSidebarOpen] = useState(() => folder !== null);
 
   const tabsRef = useRef(tabs);
   const activeIdRef = useRef(activeId);
@@ -145,8 +153,7 @@ export default function App() {
 
   useEffect(() => window.inkfab.onSetTheme(setTheme), []);
 
-  // The open folder is remembered across launches; a folder that has since
-  // been deleted or moved is quietly forgotten.
+  // A folder that has since been deleted or moved is quietly forgotten.
   useEffect(() => {
     writeStored('inkfab:folder', folder);
     if (!folder) {
